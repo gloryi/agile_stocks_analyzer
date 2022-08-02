@@ -77,7 +77,7 @@ class MyServerProtocol(WebSocketServerProtocol):
 
 
 	def onConnect(self, request):
-		self.telegram_interface.send_update("Fuck")
+		#self.telegram_interface.send_update("Fuck")
 		print("Connection with market analyser: {0} established".format(request.peer))
 
 

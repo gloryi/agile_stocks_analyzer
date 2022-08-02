@@ -24,7 +24,7 @@ from tqdm import tqdm
 
 TOKEN_NAME = "UNKNOWN"
 VALIDATION_MODE = False
-MA_LAG = 200
+MA_LAG = 200+33
 #MA_LAG = 300
 LOG_TOLERANCE = 3
 META_SIZE = 20
@@ -38,16 +38,16 @@ META_SIZE = 20
 meta_params = [1 for _ in range(META_SIZE)]
 
 meta_option = [[0] for _ in range(META_SIZE)]
-meta_option[0] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_option[0] = [1,1.5,2]
 meta_params[0] = 1
 
-meta_option[1] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_option[1] = [1,1.5,2]
 meta_params[1] = 1
 
-meta_option[2] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_option[2] = [1,1.5,2]
 meta_params[2] = 1
 
-meta_option[3] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_option[3] = [1,1.5,2]
 meta_params[3] = 1
 
 meta_option[4] = [[1.5, 2],
@@ -55,49 +55,47 @@ meta_option[4] = [[1.5, 2],
                   [1.5, 5],
                   [2,   3],
                   [2,   4],
-                  [3,   4],
-                  [2,   5],
-                  [3,   5],
-                  [4,   5]]
+                  [2,   5] ]
 meta_params[4] = [1.5,2]
 
-meta_option[5] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_option[5] = [1,1.5,2]
 meta_params[5] = 1
 
-meta_option[6] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_option[6] = [1,1.5,2]
 meta_params[6] = 1
 
-meta_option[7] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_option[7] = [1,1.5,2]
 meta_params[7] = 1
 
-meta_option[8] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_option[8] = [1,1.5,2]
 meta_params[8] = 1
 
-meta_option[9] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_option[9] = [1,1.5,2]
 meta_params[9] = 1
 
 # FAST MA
-meta_option[10] = [30, 50, 70, 90, 100]
+meta_option[10] = [30, 50, 70]
 meta_params[10] = 30
 
 # RSI
-meta_option[11] = [14, 30, 40, 50, 60]
+meta_option[11] = [14, 30]
 meta_params[11] = 14
 
 # HA condition
-meta_option[12] = [[3,5],[3,8],[2,5],[4,10],[5,5]]
+meta_option[12] = [[3,5],[3,8],[2,5]]
 meta_params[12] = [3,5]
 
 # SLOW MA
-meta_option[13] = [150, 160, 170, 180, 200]
+meta_option[13] = [200]
+meta_option[13] = [180, 190 , 200]
 meta_params[13] = 200
 
 # KAMA
-meta_option[14] = [30, 40, 50, 70, 80, 100]
-meta_params[14] = 30
+meta_option[14] = [50, 70]
+meta_params[14] = 50
 
 # KOREL
-meta_option[15] = [30, 50, 70, 80, 100]
+meta_option[15] = [30, 50]
 meta_params[15] = 30
 
 # BULLS DOMINANCE
@@ -167,6 +165,7 @@ class Candle():
         self.TP = 0
         self.hitSL = None
         self.hitTP = None
+        self.ignore = False
 
 
     def ochl(self):
@@ -198,6 +197,21 @@ class Candle():
 
     def markBullish(self):
         self.bullish = True
+
+    # TEST 0001
+    def setIgnore(self):
+        self.ignore = True
+
+        self.longEntry = False
+        self.shortEntry = False
+        self.bearish = False
+        self.bullish = False
+        self.SL = 0
+        self.TP = 0
+        self.hitSL = None
+        self.hitTP = None
+        self.green = False
+        self.red = False
 
 class CandleSequence():
     def __init__(self, section):
@@ -519,10 +533,12 @@ class Strategy():
         for candle in candleSequence.candles[window]:
 
             indicatorValue = rsi.ofIdx(candle.index)
-            if indicatorValue.value < 35:
+            if indicatorValue.value < 30 and indicatorValue.value > 20:
                 indicatorValue.markBullish()
-            elif indicatorValue.value > 65:
+            elif indicatorValue.value > 70 and indicatorValue.value < 80:
                 indicatorValue.markBearish()
+            elif indicatorValue.value <= 20 or indicatorValue.value >= 80:
+                indicatorValue.markBad()
 
     def evaluateMACD(self, candleSequence, macd, window):
         for candle in candleSequence.candles[window]:
@@ -534,12 +550,15 @@ class Strategy():
                 indicatorValue.markBearish()
 
     def evaluateVolume(self, candleSequence, volume, window):
-        average = volume.average(window.start, window.stop)
+        p1 = window.stop - MA_LAG//2
+        p2 = window.stop
+        average = volume.average(p1, p2)
 
-        maxVol = volume.maxV(window.start, window.stop)
-        minVol = volume.minV(window.start, window.stop)
+        maxVol = volume.maxV(p1, p2)
+        minVol = volume.minV(p1, p2)
         minOptimal = average - (average - minVol)/4
         maxOptimal = average  + (maxVol - average)/4
+
         for candle in candleSequence.candles[window]:
 
             indicatorValue = volume.ofIdx(candle.index)
@@ -555,13 +574,15 @@ class Strategy():
         for candle in candleSequence.candles[window]:
 
             indicatorValue = correl.ofIdx(candle.index)
-            if indicatorValue.value > 5 and candle.green:
-                indicatorValue.markBullish()
-            elif indicatorValue.value < -5 and candle.red:
-                indicatorValue.markBearish()
-            elif indicatorValue.value >= -2 and indicatorValue.value <= 2:
-                indicatorValue.markBad()
+            #if indicatorValue.value > 5 and candle.green:
+                #indicatorValue.markBullish()
+            #elif indicatorValue.value < -5 and candle.red:
+                #indicatorValue.markBearish()
+            #elif indicatorValue.value >= -2 and indicatorValue.value <= 2:
+                #indicatorValue.markBad()
 
+            if indicatorValue.value >= -2 and indicatorValue.value <= 2:
+                indicatorValue.markBad()
 
     def checkConfluence(self, evaluated, window):
 
@@ -635,48 +656,84 @@ class Strategy():
         HA.setWeight(meta_params[0])
         evaluated["candles"].append(HA)
 
-        ma200 = MovingAverage(meta_params[13],candles,0, (49,0,100))
+        #ma200 = MovingAverage(meta_params[13],candles,0, (49,0,100))
+        #ma200.setWeight(meta_params[1])
+        #ma200.calculate()
+        #self.evaluateMA(candles, ma200, window)
+        #evaluated["indicators"].append(ma200)
+
+        ma200 = MovingAverage(233,candles,0, (49,0,100))
         ma200.setWeight(meta_params[1])
         ma200.calculate()
         self.evaluateMA(candles, ma200, window)
         evaluated["indicators"].append(ma200)
 
-        ma50 = MovingAverage(meta_params[10], candles,0, (49+30,10+30,10+30))
+        ma50 = MovingAverage(144, candles,0, (49+30,10+30,10+30))
         ma50.setWeight(meta_params[2])
         ma50.calculate()
         self.evaluateMACross(candles, ma50, ma200, window)
+        #self.evaluateMACross(candles, kama, ma200, window)
+        #evaluated["indicators"].append(kama)
         evaluated["indicators"].append(ma50)
 
-        atr = ATR(14,candles,2, (49,0,100))
+        #kama = KAMA(meta_params[14], candles,0, (49+30,0+30,100+30))
+        #kama.calculate()
+        #kama.setWeight(meta_params[5])
+        #self.evaluateMA(candles, kama, window)
+        #evaluated["indicators"].append(kama)
+
+        #ma50 = MovingAverage(meta_params[10], candles,0, (49+30,10+30,10+30))
+        #ma50.setWeight(meta_params[2])
+        #ma50.calculate()
+        #self.evaluateMACross(candles, ma50, ma200, window)
+        #self.evaluateMACross(candles, kama, ma200, window)
+        #evaluated["indicators"].append(kama)
+        #evaluated["indicators"].append(ma50)
+
+        ma89 = MovingAverage(89,HA, 1, (49,0,100))
+        ma89.setWeight(1)
+        ma89.calculate()
+        self.evaluateMA(HA, ma89, window)
+        evaluated["indicators"].append(ma89)
+
+        ma55 = MovingAverage(55,HA, 1, (49,0,100))
+        ma55.setWeight(1)
+        ma55.calculate()
+        self.evaluateMACross(HA, ma89, ma55, window)
+        evaluated["indicators"].append(ma55)
+
+
+
+        atr = ATR(21,candles,2, (49,0,100))
         atr.setWeight(meta_params[3])
         atr.calculate()
         self.evaluateATR(candles, atr, window)
         evaluated["indicators"].append(atr)
 
-        kama = KAMA(meta_params[14], candles,0, (49+30,0+30,100+30))
-        kama.calculate()
-        kama.setWeight(meta_params[5])
-        self.evaluateMA(candles, kama, window)
-        evaluated["indicators"].append(kama)
+        #kama = KAMA(meta_params[14], candles,1, (49+30,0+30,100+30))
+        #kama.calculate()
+        #kama.setWeight(meta_params[5])
+        #self.evaluateMA(candles, kama, window)
+        #evaluated["indicators"].append(kama)
 
 
-        rsi = RSI(meta_params[11],candles,3, (49,0,100))
-        rsi.setWeight(meta_params[6])
-        rsi.calculate()
-        self.evaluateRSI(candles, rsi, window)
-        evaluated["indicators"].append(rsi)
+        #rsi = RSI(meta_params[11],candles,3, (49,0,100))
+        #rsi.setWeight(meta_params[6])
+        #rsi.calculate()
+        #self.evaluateRSI(candles, rsi, window)
+        #evaluated["indicators"].append(rsi)
 
-        macd = MACD(12, 26, 9,candles, 3, (49,0,100))
+        macd = MACD(21, 34, 13,candles, 3, (49,0,100))
         macd.setWeight(meta_params[7])
         macd.calculate()
         self.evaluateMACD(candles, macd, window)
         evaluated["indicators"].append(macd)
 
-        correl = CORREL(meta_params[15] ,candles, 3, (49,0,100))
-        correl.setWeight(meta_params[8])
-        correl.calculate()
-        self.evaluateCorrel(candles, correl, window)
-        evaluated["indicators"].append(correl)
+        #correl = CORREL(meta_params[15] ,candles, 3, (49,0,100))
+        #correl.setWeight(meta_params[8])
+        #correl.calculate()
+        #self.evaluateCorrel(candles, correl, window)
+        #evaluated["indicators"].append(correl)
 
         volume = VOLUME(candles, 2, (49,0,100))
         volume.setWeight(meta_params[9])
@@ -690,7 +747,7 @@ class Strategy():
 
 
 
-def generateOCHLPicture(candles, indicators, p1, p2 ):
+def generateOCHLPicture(candles, indicators, p1, p2, _H = None, _W = None):
     #simple_log(candles)
     #simple_log(indicators)
     def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
@@ -725,9 +782,11 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
         if candle.green:
             #col = (94,224,13)
             col = (0,255,0)
-        else:
+        elif candle.red:
             #col = (32,40,224)
             col = (0,0,255)
+        else:
+            col = (255,255,255)
         return col
 
     def fitTozone(val, minP, maxP):
@@ -824,9 +883,12 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
     depth = len(candles[0].candles[p1:p2])
     simple_log(f"DRAWING {depth} candles")
 
+    H, W = 1500, 1100
+    if not _H is None:
+        H = _H
 
-    H = 1500
-    W = 1100
+    if not _W is None:
+        W = _W
 
     img = np.zeros((H,W,3), np.uint8)
 
@@ -929,6 +991,8 @@ class EVALUATOR():
         self.folder = os.getcwd()
         self.generatedStats = ""
         self.image_path = ""
+        self.evaluatedTMP = {}
+        self.lastCandleTMP = None
 
         self.initWindow()
 
@@ -951,12 +1015,13 @@ class EVALUATOR():
         winRate = self.tp_total/(self.poses)*100 if self.tp_total > 0 else 0
         #simple_log(f"WIN RATE {round(winRate,3)}%")
         profitRate = self.clean_profits/(self.clean_profits + abs(self.clean_losses))*100 if (self.clean_profits + abs(self.clean_losses))>0 else 0
-        frequencyActual = (self.poses / self.bars) if self.bars > 0 else 0
+        #frequencyActual = (self.poses / self.bars) if self.bars > 0 else 0
         # TODO justify this constant somehow
-        frequencyDemanded = 15
-        frequencyRate = frequencyActual / frequencyDemanded
+        #frequencyDemanded = 15 / self.bars
+        frequencyRate = (1 - (abs(self.poses - 20) / 20))*100
         #simple_log(f"PROFIT RATE {round(profitRate,3)}%")
-        totalRate = (4*winRate + 5*profitRate + 1*frequencyRate)/10
+        #totalRate = (3*winRate + 5*profitRate + 2*frequencyRate)/10
+        totalRate = (4*winRate + 6*profitRate)/10
         #simple_log(f"AFTER ALL {self.clean_profits - self.clean_losses}")
         self.total = totalRate
         return winRate, profitRate, frequencyRate, totalRate
@@ -980,20 +1045,26 @@ class EVALUATOR():
 
         self.sl_last, self.tp_last = self.calculateSLTP(lastCandle, atr)
 
-        stats = "GOING `SHORT`" if lastCandle.bearish else "GOING `LONG`"
-        stats += f"\nENTRY: {lastCandle.c}"
-        stats += f"\nSL {round(self.sl_last,3)}, TP {round(self.tp_last,3)} || RRR {meta_params[4][0]}/{meta_params[4][1]}\n"
+        # division by 100 related to bug of forex prices
+        stats = "GOING #SHORT#" if lastCandle.bearish else "GOING *LONG*"
+        stats += f"\nENTRY: {lastCandle.c/100}"
+        stats += f"\nSL {round(self.sl_last/100,3)}, TP {round(self.tp_last/100,3)} || RRR {meta_params[4][0]}/{meta_params[4][1]}\n"
         stats += "--- "*6
         stats += f"\nW{round(winRate,1)}% F{round(frequencyRate,1)}% P{round(profitRate,1)}% T{round(totalRate, 1)}%\n"
-        stats += "EST.PROF {}".format(self.clean_profits - self.clean_losses)
+        stats += "EST.PROF {}".format((self.clean_profits - self.clean_losses)/100)
         return stats
 
 
 
-    def generate_image(self, candles, indicators, p1, p2, directory):
-        path = os.path.join(directory,f"{self.token}.png")
-        if not VALIDATION_MODE:
-            image = generateOCHLPicture(candles,indicators, p1, p2)
+    def generate_image(self, candles, indicators, p1, p2, directory, filename_special = None, _H = None, _W = None, draw_anyway = False):
+        filename = ""
+        if filename_special is None:
+            filename = f"{self.token}.png"
+        else:
+            filename = filename_special
+        path = os.path.join(directory, filename)
+        if not VALIDATION_MODE or draw_anyway:
+            image = generateOCHLPicture(candles,indicators, p1, p2, _H, _W)
             #simple_log(directory)
             cv.imwrite(path,image)
         return path
@@ -1006,10 +1077,18 @@ class EVALUATOR():
     def checkHitSLTP(self, candle, candles, horizon):
 
         trailingIndex = candle.index
+        #print()
+        #print(trailingIndex)
+        #print(len(candles.candles))
+        #print(horizon)
+        #if trailingIndex +1 >= horizon:
+            #return "HZ"
 
-        while trailingIndex < horizon:
+        while trailingIndex +1 < horizon:
             trailingIndex += 1
+            # TEST 0001 - DO NOT OVERLAP SLTP
             trailingCandle = candles.candles[trailingIndex]
+            trailingCandle.setIgnore()
             within = lambda sltp, trailing: sltp >= trailing.l and sltp <= trailing.h
             if within(candle.TP, trailingCandle):
                 delta = abs(candle.TP - candle.c)
@@ -1034,22 +1113,33 @@ class EVALUATOR():
                 sltp = ""
                 atrValue = atr.ofIdx(candle.index).value
                 if candle.isLong():
-                   takeProfit = candle.c + atrValue * meta_params[4][0]
-                   stopLoss = candle.c - atrValue * meta_params[4][1]
+                   stopLoss = candle.c - atrValue * meta_params[4][0]
+                   takeProfit = candle.c + atrValue * meta_params[4][1]
                    candle.TP = takeProfit
                    candle.SL = stopLoss
-                   sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles) - 10)
+                   sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles))
                 elif candle.isShort():
-                   takeProfit = candle.c - atrValue * meta_params[4][0]
-                   stopLoss = candle.c + atrValue * meta_params[4][1]
+                   stopLoss = candle.c + atrValue * meta_params[4][0]
+                   takeProfit = candle.c - atrValue * meta_params[4][1]
                    candle.TP = takeProfit
                    candle.SL = stopLoss
-                   sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles) - 10)
+                   sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles))
                 if sltp == "TP":
                     numTP += 1
                 elif sltp == "SL":
                     numSL += 1
         return numPoses, numSL, numTP
+
+    def draw_image_ex(self, filename_special):
+        self.image_path = self.generate_image(self.evaluatedTMP["target"] + self.evaluatedTMP["candles"],
+                                              self.evaluatedTMP["indicators"],
+                                              MA_LAG,
+                                              self.lastCandleTMP.index ,
+                                              directory = f"dataset{timeframe}",
+                                              filename_special = filename_special,
+                                              _H = 2000,
+                                              _W = 4000,
+                                              draw_anyway = True)
 
 
     def evaluate(self, O,C,H,L,V):
@@ -1093,6 +1183,9 @@ class EVALUATOR():
             elif lastCandle.bearish:
                 signal_type = self.stateMachine.are_new_state_signal("DOWNTREND")
 
+            self.evaluatedTMP = evaluated
+            self.lastCandleTMP = lastCandle
+
             global isFirst
             if isFirst:
                isFirst = False
@@ -1119,6 +1212,8 @@ class MarketProcessingPayload(Payload):
         self.tweaked_tr_info = bestKnownMetas["tr"]
         self.lastSL = None
         self.lastTP = None
+        self.best_perfomance = -50
+        self.worst_perfomance = 200
 
 
     def tryTweakMeta(self, O, C, H, L, V):
@@ -1180,9 +1275,7 @@ class MarketProcessingPayload(Payload):
 
     def wait_for_event(self):
         message = ""
-        time_for_next_update = INTERVAL_M/10
         # Kind of cooldown on node side
-        time.sleep(INTERVAL_M/10*60)
 
     ***REMOVED***
             simple_log("\n"*1, log_level=3)
@@ -1197,8 +1290,17 @@ class MarketProcessingPayload(Payload):
                 message = self.prepare_intro()
     ***REMOVED***
 
+
             self.lastTR = self.evaluator.total
             simple_log(f"### TR = {round(self.lastTR,2)}, NP = {self.evaluator.poses} , DELTA = {round(self.evaluator.clean_profits - self.evaluator.clean_losses,3)} /// {market_situation}", log_level=5)
+
+            if self.lastTR > self.best_perfomance:
+                self.best_perfomance = self.lastTR
+                self.evaluator.draw_image_ex(filename_special = f"{self.token}_BEST_CASE.png")
+
+            if self.lastTR < self.worst_perfomance:
+                self.worst_perfomance = self.lastTR
+                self.evaluator.draw_image_ex(filename_special = f"{self.token}_WORST_CASE.png")
 
             if(market_situation == "USUAL" or self.lastTR < 70):
 
@@ -1212,7 +1314,7 @@ class MarketProcessingPayload(Payload):
                     if is_tweaked:
                         base_case_optimizations += 1
 
-                    time.sleep(INTERVAL_M/5)
+                    time.sleep(INTERVAL_M / 5)
 
                     optimization_number += 1
                     is_time_remains = self.areWaitingForData(time_initial)

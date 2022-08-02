@@ -101,7 +101,7 @@
 ***REMOVED***
 ***REMOVED***
     minTimeFrame = 15
-    numFrames = 300
+    numFrames = 500 
 ***REMOVED***
 ***REMOVED***
 ***REMOVED***
@@ -113,21 +113,15 @@
 ***REMOVED***
 ***REMOVED***
 
-def extractOCHL(OCHLJson):
-    O, C, H, L = [], [], [], []
-    for price in OCHLJson["prices"]:
-        O.append(price["openPrice"]["bid"] + price["openPrice"]["ask"]/2)
-        C.append(price["closePrice"]["bid"]+ price["closePrice"]["ask"]/2)
-        H.append(price["highPrice"]["bid"] + price["highPrice"]["ask"]/2)
-        L.append(price["lowPrice"]["bid"]  + price["lowPrice"]["ask"]/2)
-    return O,C,H,L
-
 ***REMOVED***
 ***REMOVED***
 ***REMOVED***
-    OCHL = sendGet(timeUrl, query = timeParams).json()
-    O, C, H, L = extractOCHL(OCHL)
-    return O, C, H, L
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
 
 ***REMOVED***
 ***REMOVED***
@@ -136,9 +130,16 @@ def extractOCHL(OCHLJson):
 ***REMOVED***
 ***REMOVED***
 
-        O, C, H, L = processAsset(assetData["asset"])
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
 
-        ochlResponce = {"O" : O, "C" : C, "H" : H, "L": L}
+***REMOVED***
+
+***REMOVED***
 
 ***REMOVED***
 ***REMOVED***
