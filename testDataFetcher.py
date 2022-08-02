@@ -163,7 +163,7 @@ slidingWindow = 0
 
     print("Client is asking for", assetData["asset"])
 
-    window = slice(slidingWindow,slidingWindow+500)
+    window = slice(slidingWindow,slidingWindow + 500)
     ochlResponce = {"O":O[window],"C":C[window],"H":H[window],"L":L[window], "V":V[window]}
 
     slidingWindow += 1

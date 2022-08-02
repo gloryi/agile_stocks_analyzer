@@ -43,7 +43,7 @@ bestKnownMetas = {}
 cachedData = {}
 
 
-print(talib.get_functions())
+#print(talib.get_functions())
 
 class Candle():
     def __init__(self, o, c, h, l, v, sequence, index):
@@ -1057,7 +1057,7 @@ def tweakMetaParams():
                             for w7 in [1]:
                                 for w8 in [1]:
                                     for tp in range(2,7):
-                                        for sl in range(2,7):
+                                        for sl in range(1,tp):
                                             metaParam1 = w1
                                             metaParam2 = w2
                                             metaParam3 = w3

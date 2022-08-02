@@ -23,34 +23,109 @@ import numpy as np
 from tqdm import tqdm
 
 TOKEN_NAME = "UNKNOWN"
+VALIDATION_MODE = False
 MA_LAG = 200
-***REMOVED***
-***REMOVED***
-***REMOVED***
-metaParams =[1 for _ in range(10)]
+#MA_LAG = 300
+LOG_TOLERANCE = 3
+META_SIZE = 20
 
-metaOptions = []
-metaOptions.append([0.25,0.5,1,1.5,2,2.5,3])
-metaOptions.append([0.25,0.5,1,1.5,2,2.5,3])
-metaOptions.append([0.25,0.5,1,1.5,2,2.5,3])
-metaOptions.append([0.25,0.5,1,1.5,2,2.5,3])
-metaOptions.append([[1.5,2],[1.5,4],[1.5,6],[1.5,8],[2,4],[2,6],[4,4],[4,6]])
-metaOptions.append([0.25,0.5,1,1.5,2,2.5,3])
-metaParams[5] = 1
-metaOptions.append([0.25,0.5,1,1.5,2,2.5,3])
-metaParams[6] = 1
-metaOptions.append([0.25,0.5,1,1.5,2,2.5,3])
-metaParams[7] = 1
-metaOptions.append([0.25,0.5,1,1.5,2,2.5,3])
-metaParams[8] = 1
-metaOptions.append([0.25,0.5,1,1.5,2,2.5,3])
-metaParams[9] = 1
+# TODO move to config file
+# or command line arguments
+***REMOVED***
+***REMOVED***
+***REMOVED***
+
+meta_params = [1 for _ in range(META_SIZE)]
+
+meta_option = [[0] for _ in range(META_SIZE)]
+meta_option[0] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_params[0] = 1
+
+meta_option[1] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_params[1] = 1
+
+meta_option[2] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_params[2] = 1
+
+meta_option[3] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_params[3] = 1
+
+meta_option[4] = [[1.5, 2],
+                  [1.5, 4],
+                  [1.5, 5],
+                  [2,   3],
+                  [2,   4],
+                  [3,   4],
+                  [2,   5],
+                  [3,   5],
+                  [4,   5]]
+meta_params[4] = [1.5,2]
+
+meta_option[5] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_params[5] = 1
+
+meta_option[6] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_params[6] = 1
+
+meta_option[7] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_params[7] = 1
+
+meta_option[8] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_params[8] = 1
+
+meta_option[9] = [0.25,0.5,1,1.5,2,2.5,3]
+meta_params[9] = 1
+
+# FAST MA
+meta_option[10] = [30, 50, 70, 90, 100]
+meta_params[10] = 30
+
+# RSI
+meta_option[11] = [14, 30, 40, 50, 60]
+meta_params[11] = 14
+
+# HA condition
+meta_option[12] = [[3,5],[3,8],[2,5],[4,10],[5,5]]
+meta_params[12] = [3,5]
+
+# SLOW MA
+meta_option[13] = [150, 160, 170, 180, 200]
+meta_params[13] = 200
+
+# KAMA
+meta_option[14] = [30, 40, 50, 70, 80, 100]
+meta_params[14] = 30
+
+# KOREL
+meta_option[15] = [30, 50, 70, 80, 100]
+meta_params[15] = 30
+
+# BULLS DOMINANCE
+meta_option[16] = [0, 1]
+meta_params[16] = 1
+
+# BULLS TOLERANCE
+meta_option[17] = [0, 1]
+meta_params[17] = 0
+
+
+# BEARS DOMINANCE
+meta_option[18] = [0, 1]
+meta_params[18] = 1
+
+# BEARS TOLERANCE
+meta_option[19] = [0, 1]
+meta_params[19] = 0
+
 isFirst = True
 
-bestKnownMetas = {}
+bestKnownMetas = {"tr": 0.0,
+                    "wr": 0.0,
+                    "pr": 0.0,
+                    "estem": 0.0,
+                    "meta": [1, 1, 1, 1, [4, 2], 1, 1, 1, 1, 1]}
 
-
-INTERVAL_M = 15
+INTERVAL_M = 30
 #INTERVAL_M = 1
 INTERVAL = f"{INTERVAL_M}m"
 
@@ -58,8 +133,18 @@ if INTERVAL_M == 15:
     TIMEFRAME = "3d"
 elif INTERVAL_M == 10:
     TIMEFRAME = "2d"
+elif INTERVAL_M == 30:
+    TIMEFRAME = "30m"
 else:
     TIMEFRAME = "1d"
+
+INTERVAL_M = INTERVAL_M / 2
+
+def simple_log(*message, log_level = 1):
+    if log_level >= LOG_TOLERANCE:
+        print(*message)
+
+
 
 class Candle():
     def __init__(self, o, c, h, l, v, sequence, index):
@@ -365,10 +450,6 @@ def prepareHA(candles, section):
 class Strategy():
     def __init__(self, candlesSequence):
         self.candlesSequence = candlesSequence
-        #self.tweaks = []
-        #self.tweaks.append[[1,2,3]]
-        #self.tweaks.append[[1,2,3]]
-        #self.tweaks.append[[1,2,3]]
 
     def analyzeHASequence(self, sequence, targetColor, minSignal, minSetup):
         if targetColor != sequence[0]:
@@ -389,9 +470,9 @@ class Strategy():
             greenMask.append(candle.green)
             candle = candle.prevC()
 
-        if self.analyzeHASequence(greenMask, True, 3, 5):
+        if self.analyzeHASequence(greenMask, True, meta_params[12][0], meta_params[12][1]):
             ha.markBullish()
-        elif self.analyzeHASequence(greenMask, False, 3, 5):
+        elif self.analyzeHASequence(greenMask, False, meta_params[12][0], meta_params[12][1]):
             ha.markBearish()
 
     def evaluateHA(self, haSequence, window):
@@ -438,9 +519,9 @@ class Strategy():
         for candle in candleSequence.candles[window]:
 
             indicatorValue = rsi.ofIdx(candle.index)
-            if indicatorValue.value < 30:
+            if indicatorValue.value < 35:
                 indicatorValue.markBullish()
-            elif indicatorValue.value > 70:
+            elif indicatorValue.value > 65:
                 indicatorValue.markBearish()
 
     def evaluateMACD(self, candleSequence, macd, window):
@@ -514,10 +595,10 @@ class Strategy():
 
             newState = "USUAL"
 
-            if bullishPoints > bearishPoints + 1 and badPoints == 0:
+            if bullishPoints > bearishPoints + meta_params[16] and badPoints <= meta_params[17]:
                 evaluated["target"][0].candles[index].markBullish()
                 newState = stateMachine.are_new_state_signal("UPTREND")
-            elif bearishPoints > bullishPoints + 1 and badPoints == 0:
+            elif bearishPoints > bullishPoints + meta_params[18] and badPoints <= meta_params[19]:
                 evaluated["target"][0].candles[index].markBearish()
                 newState = stateMachine.are_new_state_signal("DOWNTREND")
             else:
@@ -551,54 +632,54 @@ class Strategy():
         window = slice(MA_LAG, lastCandle)
 
         self.evaluateHA(HA, window)
-        HA.setWeight(metaParams[0])
+        HA.setWeight(meta_params[0])
         evaluated["candles"].append(HA)
 
-        ma200 = MovingAverage(200,candles,0, (49,0,100))
-        ma200.setWeight(metaParams[1])
+        ma200 = MovingAverage(meta_params[13],candles,0, (49,0,100))
+        ma200.setWeight(meta_params[1])
         ma200.calculate()
         self.evaluateMA(candles, ma200, window)
         evaluated["indicators"].append(ma200)
 
-        ma50 = MovingAverage(50, candles,0, (49+30,10+30,10+30))
-        ma50.setWeight(metaParams[2])
+        ma50 = MovingAverage(meta_params[10], candles,0, (49+30,10+30,10+30))
+        ma50.setWeight(meta_params[2])
         ma50.calculate()
         self.evaluateMACross(candles, ma50, ma200, window)
         evaluated["indicators"].append(ma50)
 
         atr = ATR(14,candles,2, (49,0,100))
-        atr.setWeight(metaParams[3])
+        atr.setWeight(meta_params[3])
         atr.calculate()
         self.evaluateATR(candles, atr, window)
         evaluated["indicators"].append(atr)
 
-        kama = KAMA(30, candles,0, (49+30,0+30,100+30))
+        kama = KAMA(meta_params[14], candles,0, (49+30,0+30,100+30))
         kama.calculate()
-        kama.setWeight(metaParams[5])
+        kama.setWeight(meta_params[5])
         self.evaluateMA(candles, kama, window)
         evaluated["indicators"].append(kama)
 
 
-        rsi = RSI(14,candles,3, (49,0,100))
-        rsi.setWeight(metaParams[6])
+        rsi = RSI(meta_params[11],candles,3, (49,0,100))
+        rsi.setWeight(meta_params[6])
         rsi.calculate()
         self.evaluateRSI(candles, rsi, window)
         evaluated["indicators"].append(rsi)
 
         macd = MACD(12, 26, 9,candles, 3, (49,0,100))
-        macd.setWeight(metaParams[7])
+        macd.setWeight(meta_params[7])
         macd.calculate()
         self.evaluateMACD(candles, macd, window)
         evaluated["indicators"].append(macd)
 
-        correl = CORREL(30 ,candles, 3, (49,0,100))
-        correl.setWeight(metaParams[8])
+        correl = CORREL(meta_params[15] ,candles, 3, (49,0,100))
+        correl.setWeight(meta_params[8])
         correl.calculate()
         self.evaluateCorrel(candles, correl, window)
         evaluated["indicators"].append(correl)
 
         volume = VOLUME(candles, 2, (49,0,100))
-        volume.setWeight(metaParams[9])
+        volume.setWeight(meta_params[9])
         volume.calculate()
         self.evaluateVolume(candles,volume, window)
         evaluated["indicators"].append(volume)
@@ -610,29 +691,35 @@ class Strategy():
 
 
 def generateOCHLPicture(candles, indicators, p1, p2 ):
-    #print(candles)
-    #print(indicators)
+    #simple_log(candles)
+    #simple_log(indicators)
     def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
-        X = zone[0]
-        Y = zone[1]
-        dx = zone[2] - X
-        dy = zone[3] - Y
-        X1 = int(X + dx*x1)
-        Y1 = int(Y + dy*y1)
-        X2 = int(X + dx*x2)
-        Y2 = int(Y + dy*y2)
-        cv.rectangle(image,(Y1,X1),(Y2,X2),col,-1)
+***REMOVED***
+            X = zone[0]
+            Y = zone[1]
+            dx = zone[2] - X
+            dy = zone[3] - Y
+            X1 = int(X + dx*x1)
+            Y1 = int(Y + dy*y1)
+            X2 = int(X + dx*x2)
+            Y2 = int(Y + dy*y2)
+            cv.rectangle(image,(Y1,X1),(Y2,X2),col,-1)
+        except Exception:
+            pass
 
     def drawLineInZone(image,zone ,x1,y1,x2,y2, col, thickness = 1):
-        X = zone[0]
-        Y = zone[1]
-        dx = zone[2] - X
-        dy = zone[3] - Y
-        X1 = int(X + dx*x1)
-        Y1 = int(Y + dy*y1)
-        X2 = int(X + dx*x2)
-        Y2 = int(Y + dy*y2)
-        cv.line(image,(Y1,X1),(Y2,X2),col,thickness)
+***REMOVED***
+            X = zone[0]
+            Y = zone[1]
+            dx = zone[2] - X
+            dy = zone[3] - Y
+            X1 = int(X + dx*x1)
+            Y1 = int(Y + dy*y1)
+            X2 = int(X + dx*x2)
+            Y2 = int(Y + dy*y2)
+            cv.line(image,(Y1,X1),(Y2,X2),col,thickness)
+        except Exception:
+            pass
 
     def getCandleCol(candle):
         if candle.green:
@@ -718,7 +805,7 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
             maxP = max(candleSeq.maxH(p1, p2), maxP)
 
         for indicatorSeq in indicatorSequences:
-            #print(indicatorSeq.values)
+            #simple_log(indicatorSeq.values)
             minP = min(indicatorSeq.minV(p1, p2), minP)
             maxP = max(indicatorSeq.maxV(p1, p2), maxP)
 
@@ -735,7 +822,7 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
             drawIndicatorSegment(img, zone, v1, v2, minV, maxV, p1, p2, indicator.primaryColor)
 
     depth = len(candles[0].candles[p1:p2])
-    print(f"DRAWING {depth} candles")
+    simple_log(f"DRAWING {depth} candles")
 
 
     H = 1500
@@ -783,12 +870,12 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
 
 class Payload():
     def __init__(self):
-        self.random_words_list = ["Fuck!"]
         pass
 
     def wait_for_event(self):
         time.sleep(15)
-        message = random.choice(self.random_words_list)
+        message = "You somehow reached the abstarct interface..."
+        message += "You're fucked up."
         return message
 
 class MarketStateMachine():
@@ -808,94 +895,107 @@ class MarketStateMachine():
     def are_new_state_signal(self, new_state):
 
         if  self.current_state == self.unknown:
-            #print("SET INITIAL STATE OF ", new_state)
+            #simple_log("SET INITIAL STATE OF ", new_state)
             self.current_state = new_state
             return self.usual
 
         elif self.current_state == new_state:
-            #print("STATE DOES NOT CHANGED: ", new_state)
+            #simple_log("STATE DOES NOT CHANGED: ", new_state)
             return self.usual
 
         elif (self.current_state == "DOWNTREND" and new_state == "DIRTY") or (self.current_state == "UPTREND" and new_state == "DIRTY"):
-            #print("HA NOT CLEAN", new_state)
+            #simple_log("HA NOT CLEAN", new_state)
             self.current_state = new_state
             return self.usual
 
         else:
             self.current_state = new_state
             if self.current_state == "DOWNTREND":
-                #print("STATE CHANGED FROM INTRA TO DOWNTREND - FALLING")
+                #simple_log("STATE CHANGED FROM INTRA TO DOWNTREND - FALLING")
                 return self.falling
             else:
-                #print("STATE CHANGED FROM INTRA TO UPTREND - RISING")
+                #simple_log("STATE CHANGED FROM INTRA TO UPTREND - RISING")
                 return self.rising
 
 
 class EVALUATOR():
-    def __init__(self, token, virtual = False, processBest = False, draw = True):
-        self.token = token
-        self.folder = os.getcwd()
-        self.random_words_list = ["FUCK"]
-        self.poses = 0
-        self.bars = 0
-        self.assets = 0
-        self.sl = 0
-        self.tp = 0
-        self.cleanProfit = 0
-        self.assetProfit = 0
-        self.cleanLoses = 0
-        self.assetLoses = 0
-        self.draw = draw
-        self.processBest = processBest
-        self.assetsList = []
-        self.assetsPerfomance = {}
+    def __init__(self, token, virtual = False, draw = True):
         self.stateMachine = MarketStateMachine()
-        self.lastTP = 0
-        self.lastLS = 0
-        self.total = 0
+
+        self.token = token
         self.virtual = virtual
+        self.draw = draw
+
+        self.folder = os.getcwd()
         self.generatedStats = ""
         self.image_path = ""
 
+        self.initWindow()
+
+    def initWindow(self):
+        self.clean_losses = 0
+        self.clean_profits = 0
+
+        self.sl_total = 0
+        self.tp_total = 0
+
+        self.bars = 0
+        self.poses = 0
+        self.total = 0
+        self.tp_last = 0
+        self.sl_last = 0
+
+
     def calculateRate(self):
 
-        winRate = self.tp/(self.poses)*100
-        print(f"WIN RATE {round(winRate,3)}%")
-        profitRate = self.cleanProfit/(self.cleanProfit + abs(self.cleanLoses))*100
-        print(f"PROFIT RATE {round(profitRate,3)}%")
-        totalRate = (winRate + profitRate)/2
-        print(f"TOTAL RATE {round(totalRate,3)}")
-        print(f"AFTER ALL {self.cleanProfit - self.cleanLoses}")
+        winRate = self.tp_total/(self.poses)*100 if self.tp_total > 0 else 0
+        #simple_log(f"WIN RATE {round(winRate,3)}%")
+        profitRate = self.clean_profits/(self.clean_profits + abs(self.clean_losses))*100 if (self.clean_profits + abs(self.clean_losses))>0 else 0
+        frequencyActual = (self.poses / self.bars) if self.bars > 0 else 0
+        # TODO justify this constant somehow
+        frequencyDemanded = 15
+        frequencyRate = frequencyActual / frequencyDemanded
+        #simple_log(f"PROFIT RATE {round(profitRate,3)}%")
+        totalRate = (4*winRate + 5*profitRate + 1*frequencyRate)/10
+        #simple_log(f"AFTER ALL {self.clean_profits - self.clean_losses}")
         self.total = totalRate
-        return winRate, profitRate, totalRate
+        return winRate, profitRate, frequencyRate, totalRate
+
+    def calculateSLTP(self, targetCandle, atr):
+
+        atrValue = atr.ofIdx(targetCandle.index).value
+        sl, tp = targetCandle.c, targetCandle.c
+        if targetCandle.bullish:
+            sl = targetCandle.c - atrValue * meta_params[4][0]
+            tp = targetCandle.c + atrValue * meta_params[4][1]
+        elif targetCandle.bearish:
+            sl = targetCandle.c + atrValue * meta_params[4][0]
+            tp = targetCandle.c - atrValue * meta_params[4][1]
+
+        return sl, tp
+
 
     def generateStats(self, lastCandle, atr):
-        winRate, profitRate, totalRate = self.calculateRate()
-        atrValue = atr.ofIdx(lastCandle.index).value
-        sl, tp = lastCandle.c, lastCandle.c
-        if lastCandle.bullish:
-            tp = lastCandle.c + atrValue * metaParams[4][0]
-            sl = lastCandle.c - atrValue * metaParams[4][1]
-        elif lastCandle.bearish:
-            tp = lastCandle.c - atrValue * metaParams[4][0]
-            sl = lastCandle.c + atrValue * metaParams[4][1]
+        winRate, profitRate, frequencyRate, totalRate = self.calculateRate()
 
-        stats = "GOING SHORT" if lastCandle.bearish else "GOING LONG"
+        self.sl_last, self.tp_last = self.calculateSLTP(lastCandle, atr)
+
+        stats = "GOING `SHORT`" if lastCandle.bearish else "GOING `LONG`"
         stats += f"\nENTRY: {lastCandle.c}"
-        stats += f"\nTP {round(tp,3)}, SL {round(sl,3)} || RRR {metaParams[4][0]}/{metaParams[4][1]}\n"
+        stats += f"\nSL {round(self.sl_last,3)}, TP {round(self.tp_last,3)} || RRR {meta_params[4][0]}/{meta_params[4][1]}\n"
         stats += "--- "*6
-        stats += f"\nP{round(profitRate,1)}% W{round(winRate,1)}%T{round(totalRate, 1)}%\n"
-        stats += "FROM EVALUATED {}%\n".format(round(bestKnownMetas[self.token]["tr"]*100,1))
-        stats += "EST.PROF {}".format(self.cleanProfit - self.cleanLoses)
+        stats += f"\nW{round(winRate,1)}% F{round(frequencyRate,1)}% P{round(profitRate,1)}% T{round(totalRate, 1)}%\n"
+        stats += "EST.PROF {}".format(self.clean_profits - self.clean_losses)
         return stats
 
 
 
     def generate_image(self, candles, indicators, p1, p2, directory):
-        image = generateOCHLPicture(candles,indicators, p1, p2)
-        #print(directory)
         path = os.path.join(directory,f"{self.token}.png")
-        cv.imwrite(path,image)
+        if not VALIDATION_MODE:
+            image = generateOCHLPicture(candles,indicators, p1, p2)
+            #simple_log(directory)
+            cv.imwrite(path,image)
         return path
 
     def calculateATR(self, candles):
@@ -913,14 +1013,12 @@ class EVALUATOR():
             within = lambda sltp, trailing: sltp >= trailing.l and sltp <= trailing.h
             if within(candle.TP, trailingCandle):
                 delta = abs(candle.TP - candle.c)
-                self.cleanProfit += delta
-                self.assetProfit += delta
+                self.clean_profits += delta
                 candle.hitTP = trailingIndex
                 return "TP"
             if within(candle.SL, trailingCandle):
                 delta = abs(candle.SL - candle.c)
-                self.cleanLoses += delta
-                self.assetLoses += delta
+                self.clean_losses += delta
                 candle.hitSL = trailingIndex
                 return "SL"
         return "HZ"
@@ -936,14 +1034,14 @@ class EVALUATOR():
                 sltp = ""
                 atrValue = atr.ofIdx(candle.index).value
                 if candle.isLong():
-                   takeProfit = candle.c + atrValue * metaParams[4][0]
-                   stopLoss = candle.c - atrValue * metaParams[4][1]
+                   takeProfit = candle.c + atrValue * meta_params[4][0]
+                   stopLoss = candle.c - atrValue * meta_params[4][1]
                    candle.TP = takeProfit
                    candle.SL = stopLoss
                    sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles) - 10)
                 elif candle.isShort():
-                   takeProfit = candle.c - atrValue * metaParams[4][0]
-                   stopLoss = candle.c + atrValue * metaParams[4][1]
+                   takeProfit = candle.c - atrValue * meta_params[4][0]
+                   stopLoss = candle.c + atrValue * meta_params[4][1]
                    candle.TP = takeProfit
                    candle.SL = stopLoss
                    sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles) - 10)
@@ -956,11 +1054,14 @@ class EVALUATOR():
 
     def evaluate(self, O,C,H,L,V):
 
+            if not self.virtual:
+                simple_log("##E ", meta_params, log_level=2)
+            else:
+                pass
 
-            self.assetLoses = 0
-            self.assetProfit = 0
+            self.initWindow()
+
             message = ""
-            self.assets += 1
             longCandles = []
             shortCandles = []
 
@@ -972,13 +1073,14 @@ class EVALUATOR():
             S = Strategy(candles)
 
             evaluated = S.run()
+
             atr = self.calculateATR(candles)
             numPoses, numSL, numTP = self.setSLTP(evaluated["target"][0], atr)
-            self.poses += numPoses
-            self.sl += numSL
-            self.tp += numTP
-            self.assetsPerfomance[self.token] = [numSL, numTP, self.assetProfit, self.assetLoses]
-            self.bars += len(candles)
+
+            self.poses = numPoses
+            self.sl_total = numSL
+            self.tp_total = numTP
+            self.bars = len(candles)
             lastCandle = candles.candles[-1]
 
             if self.virtual:
@@ -998,8 +1100,7 @@ class EVALUATOR():
                self.image_path = self.generate_image(evaluated["target"] +evaluated["candles"],evaluated["indicators"],lastCandle.index -100,lastCandle.index ,directory = f"dataset{timeframe}")
                return "INIT"
 
-            if signal_type != "USUAL":
-                self.generatedStats = self.generateStats(lastCandle, atr)
+            self.generatedStats = self.generateStats(lastCandle, atr)
             if self.draw and signal_type != "USUAL":
                 self.image_path = self.generate_image(evaluated["target"] +evaluated["candles"],evaluated["indicators"],lastCandle.index -100,lastCandle.index ,directory = f"dataset{timeframe}")
 
@@ -1011,117 +1112,158 @@ class MarketProcessingPayload(Payload):
     def __init__(self, token):
         self.token = token
         self.state = MarketStateMachine()
-        self.random_words_list = ["FUCK"]
-        self.evaluator = EVALUATOR(self.token, processBest = True, draw = True)
-        self.settleMeta()
-        self.tweakedInd = 0
-        self.tweaked = 0
+        self.evaluator = EVALUATOR(self.token, draw = True)
         self.metaUpdate = ""
-        self.priorTR = bestKnownMetas[self.token]["tr"]
-        self.tweakedTR = bestKnownMetas[self.token]["tr"]
+        self.lastTR = 0
+        self.prior_tr_info = bestKnownMetas["tr"]
+        self.tweaked_tr_info = bestKnownMetas["tr"]
+        self.lastSL = None
+        self.lastTP = None
 
-    def settleMeta(self):
-        global metaParams
-        preProcessed = bestKnownMetas[self.token]["meta"]
-        metaParams[0] = preProcessed[0]
-        metaParams[1] = preProcessed[1]
-        metaParams[2] = preProcessed[2]
-        metaParams[3] = preProcessed[3]
-        metaParams[4] = preProcessed[4]
 
     def tryTweakMeta(self, O, C, H, L, V):
-        global metaParams
-        global bestKnownMetas
+        global meta_params
 
-        print(self.token, " TWEAKING")
-        tr = bestKnownMetas[self.token]["tr"]
-        print(self.token, " TR = ", tr)
-        randomMeta = random.randint(0,9)
-        self.tweakedInd = randomMeta
-        self.tweaked = metaParams[randomMeta]
-        metaParams[self.tweakedInd] = random.choice(metaOptions[self.tweakedInd])
-        virtualEvaluator = EVALUATOR(self.token, processBest = False, draw = False, virtual = True)
-        newTR = virtualEvaluator.evaluate(O, C, H, L, V)
-        if newTR > tr:
-            bestKnownMetas[self.token]["tr"] = newTR
-            self.priorTR, self.tweakedTR = tr, newTR
-            self.tweakedTR = newTR
+        # TODO CHECK OF ERROR OF IGNORING
+        # OPTIMIZATION PRIOR TO
+        # PREVIOUS 100
+
+        random_meta = random.randint(0,META_SIZE-1)
+        meta_backup = meta_params[random_meta]
+        meta_params[random_meta] = random.choice(meta_option[random_meta])
+
+        virtualEvaluator = EVALUATOR(self.token, draw = False, virtual = True)
+        virtualEvaluator.evaluate(O, C, H, L, V)
+        newTR = virtualEvaluator.total
+
+        if newTR > self.lastTR:
+            simple_log("**V ", meta_params, log_level=2)
+            simple_log(f"{self.lastTR} -> {newTR}", log_level=4)
+            simple_log(f"{meta_params}", log_level=3)
+            self.prior_tr_info, self.tweaked_tr_info = self.lastTR, newTR
+            #self.evaluator.evaluate(O, C, H, L, V)
+            #simple_log(f"V->TR = {round(self.evaluator.total,4)}", log_level=2)
+            self.lastTR = newTR
+            return True
         else:
-            metaParams[self.tweakedInd] = self.tweaked
+            meta_params[random_meta] = meta_backup
+            return False
 
 
-    def fetch_market_data(self):
+    def fetch_market_data(self, feedback = None):
 
         HOST = "127.0.0.1"
         ***REMOVED***
         data = {}
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((HOST, PORT))
-            s.sendall(json.dumps({"asset":TOKEN_NAME}).encode("UTF-8"))
+            data_request = {"asset":TOKEN_NAME}
+
+            if not feedback is None:
+                data_request["feedback"] = feedback
+
+            s.sendall(json.dumps(data_request).encode("UTF-8"))
             data = json.loads(s.recv(45000).decode("UTF-8"))
 
         return data["O"], data["C"], data["H"], data["L"], data["V"]
 
+    def prepare_feedback(self):
+        simple_log("VVV ", self.lastSL, self.lastTP, log_level=1)
+        if not self.lastSL is None and not self.lastTP is None:
+            return {"SL": self.lastSL, "TP": self.lastTP}
+        else:
+            return None
 
+    def dump_stats(self):
+        self.lastSL = None
+        self.lastTP = None
 
     def wait_for_event(self):
         message = ""
-        time_for_next_update = 0
+        time_for_next_update = INTERVAL_M/10
+        # Kind of cooldown on node side
+        time.sleep(INTERVAL_M/10*60)
+
     ***REMOVED***
-            time.sleep(time_for_next_update*60/5)
-            O, C, H, L, V = self.fetch_market_data()
+            simple_log("\n"*1, log_level=3)
+            simple_log("##M ", meta_params, log_level=1)
+
+            O, C, H, L, V = self.fetch_market_data(self.prepare_feedback())
+
+            self.dump_stats()
             market_situation = self.evaluator.evaluate(O, C, H, L, V)
 
             if market_situation == "INIT":
-                message = {}
-                message["text"] = self.token + " \n " + "INTIALIZED"
-                message["text"] += " \n " + self.evaluator.generatedStats
-                message["image"] = self.evaluator.image_path
+                message = self.prepare_intro()
     ***REMOVED***
 
-            forecastTR = self.evaluator.total
+            self.lastTR = self.evaluator.total
+            simple_log(f"### TR = {round(self.lastTR,2)}, NP = {self.evaluator.poses} , DELTA = {round(self.evaluator.clean_profits - self.evaluator.clean_losses,3)} /// {market_situation}", log_level=5)
 
-            time_for_next_update = self.tweakFrequency(market_situation)
+            if(market_situation == "USUAL" or self.lastTR < 70):
 
-            if(market_situation == "USUAL" or forecastTR < 70):
-                # DO TIMINGS BASED
-                self.tryTweakMeta(O,C,H,L,V)
-                time.sleep(time_for_next_update*60/7)
-                self.tryTweakMeta(O,C,H,L,V)
-                time.sleep(time_for_next_update*60/7)
-                self.tryTweakMeta(O,C,H,L,V)
-                time.sleep(time_for_next_update*60/7)
-                self.tryTweakMeta(O,C,H,L,V)
-                time.sleep(time_for_next_update*60/7)
-                self.tryTweakMeta(O,C,H,L,V)
-                time.sleep(time_for_next_update*60/7)
-                self.tryTweakMeta(O,C,H,L,V)
-                time.sleep(time_for_next_update*60/7)
-                self.tryTweakMeta(O,C,H,L,V)
-                time.sleep(time_for_next_update*60/7)
-                self.tryTweakMeta(O,C,H,L,V)
-                time.sleep(time_for_next_update*60/7)
+                time_initial = time.time()
+                is_time_remains = self.areWaitingForData(time_initial)
+                base_case_optimizations = 4
+                optimization_number = 0
+
+                while optimization_number < base_case_optimizations or is_time_remains:
+                    is_tweaked = self.tryTweakMeta(O,C,H,L,V)
+                    if is_tweaked:
+                        base_case_optimizations += 1
+
+                    time.sleep(INTERVAL_M/5)
+
+                    optimization_number += 1
+                    is_time_remains = self.areWaitingForData(time_initial)
                 continue
 
-            message = {}
-            message["text"] = self.token + " \n " + self.evaluator.generatedStats
-            metaUpd = f"{round(self.priorTR*100,1)}% >>> {round(self.tweakedTR*100,1)}%"
-            message["text"] += "\n"+metaUpd
-            message["image"] = self.evaluator.image_path
+            simple_log(f"### TRIGGER = {market_situation}", log_level=5)
+
+            self.lastSL, self.lastTP = self.evaluator.sl_last, self.evaluator.tp_last
+
+            message = self.prepare_report()
 ***REMOVED***
 
         return json.dumps(message)
 
-    def tweakFrequency(self, marketSituation):
+    def areWaitingForData(self, initialTime):
+        endTime = time.time()
+        elapsed = endTime - initialTime
+        elapsed_seconds = elapsed
+        simple_log(f"TIME ELAPSED {elapsed_seconds} <--> NEXT CANDLE {INTERVAL_M*60}", log_level = 2)
+        if elapsed < INTERVAL_M*60:
+            simple_log("OPTIMIZING !!!",log_level = 2)
+            return True
+        simple_log("FETCHING DATA",log_level = 2)
+        return False
 
-        if marketSituation == "USUAL":
-            time_for_next_update = INTERVAL_M
-        elif marketSituation == "SUSPICIOUS":
-            time_for_next_update = INTERVAL_M
-        else:
-            time_for_next_update = INTERVAL_M
+    #def tweakFrequency(self, market_situation):
 
-        return time_for_next_update
+        #if market_situation == "USUAL":
+            #time_for_next_update = INTERVAL_M
+        #elif market_situation == "SUSPICIOUS":
+            #time_for_next_update = INTERVAL_M
+        #else:
+            #time_for_next_update = INTERVAL_M
+        #return time_for_next_update
+
+    def prepare_intro(self):
+        message = {}
+        message["text"] = self.token + " \n " + "INTIALIZED"
+        message["text"] += " \n " + self.evaluator.generatedStats
+        message["image"] = self.evaluator.image_path
+        return message
+
+    def prepare_report(self):
+        message = {}
+        if not VALIDATION_MODE:
+            message["text"] = self.token + " \n " + self.evaluator.generatedStats
+            metaUpd = f"{round(self.prior_tr_info*100,1)}% >>> {round(self.tweaked_tr_info*100,1)}%"
+            message["text"] += "\n"+metaUpd
+            message["image"] = self.evaluator.image_path
+
+        return message
 
 class MyClientProtocol(WebSocketClientProtocol):
 
@@ -1130,17 +1272,17 @@ class MyClientProtocol(WebSocketClientProtocol):
         self.payload = MarketProcessingPayload(TOKEN_NAME )
 
     def onConnect(self, response):
-        print("Connected to bot server: {0}".format(response.peer))
+        simple_log("Connected to bot server: {0}".format(response.peer))
 
     def onConnecting(self, transport_details):
-        print("Connecting to bot server with status of: {}".format(transport_details))
+        simple_log("Connecting to bot server with status of: {}".format(transport_details))
         return None  # ask for defaults
 
     def current_milli_time(self):
         return round(time.time() * 1000)
 
     def onOpen(self):
-        print("WebSocket connection open.")
+        simple_log("WebSocket connection open.")
 
         def send_task():
             message_to_server = self.payload.wait_for_event()
@@ -1151,11 +1293,11 @@ class MyClientProtocol(WebSocketClientProtocol):
 
     def onMessage(self, payload, isBinary):
         grabber_msg = payload.decode('utf8')
-        print("RECEIVED ", grabber_msg)
+        simple_log("RECEIVED ", grabber_msg)
         return
 
     def onClose(self, wasClean, code, reason):
-        print("Connection wint bot dispatcher closed: {0}".format(reason))
+        simple_log("Connection wint bot dispatcher closed: {0}".format(reason))
 
 
 if __name__ == '__main__':
@@ -1166,12 +1308,16 @@ if __name__ == '__main__':
     from twisted.internet import reactor
 
     TOKEN_NAME = sys.argv[1]
+    if len (sys.argv) > 2:
+        VALIDATION_MODE = True if sys.argv[2] == "V" else False
+        timeframe = 0
+        INTERVAL_M = 0
+    else:
+        VALIDATION_MODE = False
 
-    with open(f"bestMetas{timeframe}.json", "r") as bestEvaluatedFile:
-        bestKnownMetas = json.load(bestEvaluatedFile)
-    if TOKEN_NAME not in bestKnownMetas:
-        print(f"ASSET {TOKEN_NAME} IS NOT PRE_PROCESSED")
-        exit()
+    if len (sys.argv) > 3:
+        LOG_TOLERANCE = int(sys.argv[3])
+
 
     log.startLogging(sys.stdout)
 
@@ -1182,6 +1328,6 @@ if __name__ == '__main__':
 ***REMOVED***
         reactor.run()
     except Exception:
-        print("Proably sigterm was received")
+        simple_log("Proably sigterm was received")
 
 
