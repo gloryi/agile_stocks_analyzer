@@ -13,6 +13,9 @@ from talib import MFI
 from talib import MACD as talibMACD
 from talib import KAMA as talibKAMA
 from talib import EMA as talibEMA
+from talib import ADX as talibADX
+from talib import PLUS_DI as talibPLUS_DI
+from talib import MINUS_DI as talibMINUS_DI
 from talib import CORREL as talibCORREL
 from collections import namedtuple
 import cv2 as cv
@@ -362,6 +365,74 @@ class EMA(Indicator):
         for index in range(self.period, len(self.candleSequence.candles)):
             self.values.append(IndicatorValue( arrEma[index], index))
 
+class MINUS_DI(Indicator):
+    def __init__(self, period, *args, **kw):
+        self.period=period
+        super().__init__(*args, **kw)
+
+    def calculate(self):
+        arrHigh = []
+        arrLow = []
+        arrClose = []
+
+        for index in range(0, len(self.candleSequence.candles)):
+            arrHigh.append(self.candleSequence.candles[index].h)
+            arrLow.append(self.candleSequence.candles[index].l)
+            arrClose.append(self.candleSequence.candles[index].c)
+
+        arrHigh = np.asarray(arrHigh)
+        arrLow = np.asarray(arrLow)
+        arrClose = np.asarray(arrClose)
+
+        arrMINUS_DI = talibMINUS_DI(arrHigh, arrLow, arrClose, self.period)
+        for index in range(self.period, len(self.candleSequence.candles)):
+            self.values.append(IndicatorValue( arrMINUS_DI[index], index))
+
+class PLUS_DI(Indicator):
+    def __init__(self, period, *args, **kw):
+        self.period=period
+        super().__init__(*args, **kw)
+
+    def calculate(self):
+        arrHigh = []
+        arrLow = []
+        arrClose = []
+
+        for index in range(0, len(self.candleSequence.candles)):
+            arrHigh.append(self.candleSequence.candles[index].h)
+            arrLow.append(self.candleSequence.candles[index].l)
+            arrClose.append(self.candleSequence.candles[index].c)
+
+        arrHigh = np.asarray(arrHigh)
+        arrLow = np.asarray(arrLow)
+        arrClose = np.asarray(arrClose)
+
+        arrPLUS_DI = talibPLUS_DI(arrHigh, arrLow, arrClose, self.period)
+        for index in range(self.period, len(self.candleSequence.candles)):
+            self.values.append(IndicatorValue( arrPLUS_DI[index], index))
+
+class ADX(Indicator):
+    def __init__(self, period, *args, **kw):
+        self.period=period
+        super().__init__(*args, **kw)
+
+    def calculate(self):
+        arrHigh = []
+        arrLow = []
+        arrClose = []
+
+        for index in range(0, len(self.candleSequence.candles)):
+            arrHigh.append(self.candleSequence.candles[index].h)
+            arrLow.append(self.candleSequence.candles[index].l)
+            arrClose.append(self.candleSequence.candles[index].c)
+
+        arrHigh = np.asarray(arrHigh)
+        arrLow = np.asarray(arrLow)
+        arrClose = np.asarray(arrClose)
+
+        arrADX = talibADX(arrHigh, arrLow, arrClose, self.period)
+        for index in range(self.period, len(self.candleSequence.candles)):
+            self.values.append(IndicatorValue( arrADX[index], index))
 
 class ATR(Indicator):
     def __init__(self, period, *args, **kw):
@@ -605,6 +676,26 @@ class Strategy():
             elif indicatorValue.value <= 10 or indicatorValue.value >= 90:
                 indicatorValue.markBad()
 
+    def evaluateADX(self, candleSequence, adx, window):
+
+        for candle in candleSequence.candles[window]:
+
+            indicatorValue = adx.ofIdx(candle.index)
+            if indicatorValue.value < 25:
+                indicatorValue.markBad()
+
+    def evaluateDXDI(self, candleSequence, plus_di, minus_di, window):
+
+        for candle in candleSequence.candles[window]:
+            dx = plus_di.ofIdx(candle.index)
+            di = minus_di.ofIdx(candle.index)
+
+            if dx.value > di.value:
+                dx.markBullish()
+
+            elif di.value > dx.value:
+                di.markBearish()
+
     def evaluateMACD(self, candleSequence, macd, window):
         for candle in candleSequence.candles[window]:
 
@@ -780,6 +871,22 @@ class Strategy():
         macd.calculate()
         self.evaluateMACD(candles, macd, window)
         evaluated["indicators"].append(macd)
+
+        #adx = ADX(14, candles, 3, (49,0,100))
+        #adx.setWeight(1)
+        #adx.calculate()
+        #self.evaluateADX(candles, adx, window)
+        #evaluated["indicators"].append(adx)
+
+        plus_di = PLUS_DI(14, candles, 3, (49,0,100))
+        plus_di.setWeight(1)
+        plus_di.calculate()
+        minus_di = MINUS_DI(14, candles, 3, (49,0,100))
+        minus_di.setWeight(1)
+        minus_di.calculate()
+        self.evaluateDXDI(candles, plus_di, minus_di, window)
+        evaluated["indicators"].append(minus_di)
+        evaluated["indicators"].append(plus_di)
 
         #correl = CORREL(meta_params[15] ,candles, 3, (49,0,100))
         #correl.setWeight(meta_params[8])
