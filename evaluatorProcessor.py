@@ -40,72 +40,80 @@ META_SIZE = 18
 ***REMOVED***
 
 meta_params = [1 for _ in range(META_SIZE)]
+meta_option = [None for _ in range(META_SIZE)]
+meta_indexes = [i for i in range(META_SIZE)]
 
-meta_option = [[0] for _ in range(META_SIZE)]
-meta_option[0] = [0.25, 0.5,1,1.5, 2]
+meta_option[0] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[0] = 1
 
-meta_option[1] = [0.25, 0.5,1,1.5,2]
+meta_option[1] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[1] = 1
 
-meta_option[2] = [0.25, 0.5,1,1.5,2]
+meta_option[2] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[2] = 1
 
-meta_option[3] = [0.25, 0.5,1,1.5,2]
+meta_option[3] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[3] = 1
 
-meta_option[4] = [[1.5,  2],
-                  [1.5,  2.5],
-                  [1,  1.5],
-                  [2,   3]]
+def generateSLTP():
+    sl = random.choice([1.5, 2, 2.5, 3])
+    tp_dominance = random.choice([0.5, 1.0, 1.5, 2.0])
+    tp = sl + tp_dominance
+    return sl, tp
+
+meta_option[4] = generateSLTP
 meta_params[4] = [1.5,2]
 
-meta_option[5] = [0.25, 0.5,1,1.5,2]
+meta_option[5] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[5] = 1
 
-meta_option[6] = [0.25, 0.5,1,1.5,2]
+meta_option[6] = lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[6] = 1
 
-meta_option[7] = [0.25, 0.5,1,1.5,2]
+meta_option[7] = lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[7] = 1
 
-meta_option[8] = [0.25, 0.5,1,1.5,2]
+meta_option[8] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[8] = 1
 
-meta_option[9] = [0.25, 0.5,1,1.5,2]
+meta_option[9] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[9] = 1
 
 # FAST MA
-meta_option[10] = [30, 40, 50, 60, 70]
+meta_option[10] =  lambda : random.randrange(30, 70,5)
 meta_params[10] = 40
 
 # RSI
-meta_option[11] = [14, 16, 18, 20, 25, 30]
+meta_option[11] = lambda : random.randrange(30, 70,5)
 meta_params[11] = 14
 
+def generateHKCOMP():
+    red = random.randint(2,4)
+    green = random.randint(2, 5)
+    return red,green
+
 # HA condition
-meta_option[12] = [[3,5],[3,8],[2,5]]
+meta_option[12] = generateHKCOMP
 meta_params[12] = [3,5]
 
 # SLOW MA
-meta_option[13] = [200]
-meta_option[13] = [160, 170, 180, 190 , 200]
+meta_option[13] =  lambda: random.randrange(160, 200,5)
 meta_params[13] = 200
 
 # KAMA
-meta_option[14] = [40, 50, 60, 70, 80]
+meta_option[14] = lambda : random.randrange(40, 80, 5)
 meta_params[14] = 50
 
 # BOILINGER
-meta_option[15] = [0.25, 0.5,1,1.5,2]
+meta_option[15] = lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[15] = 1
 
 # DXDI
-meta_option[16] = [0.25, 0.5,1,1.5,2]
+meta_option[16] = lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[16] = 1
 
 # EMA
-meta_option[17] = [0.25, 0.5,1,1.5,2]
+meta_option[17] = lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
 meta_params[17] = 1
 
 
@@ -1419,6 +1427,16 @@ class MarketProcessingPayload(Payload):
         self.optimization_target = 80
         self.optimization_criteria = self.optimization_trigger
 
+        self.indexesInWork = []
+
+    def get_random_meta_idx(self):
+
+        if len(self.indexesInWork) == 0:
+            self.indexesInWork = [_ for _ in range(META_SIZE)]
+            random.shuffle(self.indexesInWork)
+
+        return self.indexesInWork.pop()
+
 
     def tryTweakMeta(self, O, C, H, L, V, tweak_major=True):
         global meta_params
@@ -1430,30 +1448,30 @@ class MarketProcessingPayload(Payload):
         optimization_level = random.randint(0,  3)
 
         if optimization_level >= 0:
-            random_meta1 = random.randint(0,META_SIZE-1)
+            random_meta1 = self.get_random_meta_idx()
             meta_backup1 = meta_params[random_meta1]
 
         if optimization_level >= 1:
-            random_meta2 = random.randint(0,META_SIZE-1)
+            random_meta2 = self.get_random_meta_idx()
             meta_backup2 = meta_params[random_meta2]
 
         if optimization_level >= 2:
-            random_meta3 = random.randint(0,META_SIZE-1)
+            random_meta3 = self.get_random_meta_idx()
             meta_backup3 = meta_params[random_meta3]
 
         if optimization_level >= 3:
-            random_meta4 = random.randint(0,META_SIZE-1)
+            random_meta4 = self.get_random_meta_idx()
             meta_backup4 = meta_params[random_meta4]
 
 
         if optimization_level >= 0:
-            meta_params[random_meta1] = random.choice(meta_option[random_meta1])
+            meta_params[random_meta1] = meta_option[random_meta1]()
         if optimization_level >= 1:
-            meta_params[random_meta2] = random.choice(meta_option[random_meta2])
+            meta_params[random_meta2] = meta_option[random_meta2]()
         if optimization_level >= 2:
-            meta_params[random_meta3] = random.choice(meta_option[random_meta3])
+            meta_params[random_meta3] = meta_option[random_meta3]()
         if optimization_level >= 3:
-            meta_params[random_meta4] = random.choice(meta_option[random_meta4])
+            meta_params[random_meta4] = meta_option[random_meta4]()
 
         virtualEvaluator = EVALUATOR(self.token, draw = False, virtual = True)
         virtualEvaluator.evaluate(O, C, H, L, V)
@@ -1490,7 +1508,21 @@ class MarketProcessingPayload(Payload):
         global meta_duplicate
         meta_params, meta_duplicate = meta_duplicate, meta_params
 
-        self.tryTweakMeta(O, C, H, L, V, tweak_major = False)
+        virtualEvaluator = EVALUATOR(self.token, draw = False, virtual = True)
+        virtualEvaluator.evaluate(O, C, H, L, V)
+        self.minor_tr = virtualEvaluator.total
+
+        base_case_optimizations = 3
+        optimization_number = 0
+
+        while optimization_number < base_case_optimizations:
+            is_tweaked = self.tryTweakMeta(O,C,H,L,V, tweak_major = False)
+            if is_tweaked:
+                base_case_optimizations += 1
+
+            time.sleep(INTERVAL_M / 5)
+
+            optimization_number += 1
 
         meta_params, meta_duplicate = meta_duplicate, meta_params
 
@@ -1708,6 +1740,7 @@ if __name__ == '__main__':
     if len (sys.argv) > 3:
         LOG_TOLERANCE = int(sys.argv[3])
 
+    random.seed(time.time())
 
     log.startLogging(sys.stdout)
 

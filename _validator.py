@@ -13,7 +13,7 @@ import numpy as np
 
 ***REMOVED***
 WINDOW_SIZE = 600
-MAX_DEPTH = 500
+MAX_DEPTH = 200
 ***REMOVED***
 
 ***REMOVED***
