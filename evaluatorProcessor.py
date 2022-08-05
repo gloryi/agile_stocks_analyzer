@@ -12,6 +12,7 @@ from talib import RSI as talibRSI
 from talib import MFI
 from talib import MACD as talibMACD
 from talib import KAMA as talibKAMA
+from talib import EMA as talibEMA
 from talib import CORREL as talibCORREL
 from collections import namedtuple
 import cv2 as cv
@@ -347,6 +348,19 @@ class KAMA(Indicator):
         for index in range(self.period, len(self.candleSequence.candles)):
             self.values.append(IndicatorValue( arrKama[index], index))
 
+class EMA(Indicator):
+    def __init__(self, period, *args, **kw):
+        self.period=period
+        super().__init__(*args, **kw)
+
+    def calculate(self):
+        arrClose = []
+        for index in range(0, len(self.candleSequence.candles)):
+            arrClose.append(self.candleSequence.candles[index].c)
+        arrClose = np.asarray(arrClose)
+        arrEma = talibEMA(arrClose, self.period)
+        for index in range(self.period, len(self.candleSequence.candles)):
+            self.values.append(IndicatorValue( arrEma[index], index))
 
 
 class ATR(Indicator):
@@ -676,11 +690,23 @@ class Strategy():
         self.evaluateMA(candles, ma200, window)
         evaluated["indicators"].append(ma200)
 
-        kama = KAMA(meta_params[14], HA,1, (49+30,0+30,100+30))
-        kama.calculate()
-        kama.setWeight(meta_params[8])
-        self.evaluateMA(HA, kama, window)
-        evaluated["indicators"].append(kama)
+        #kama = KAMA(meta_params[14], HA,1, (49+30,0+30,100+30))
+        #kama.calculate()
+        #kama.setWeight(meta_params[8])
+        #self.evaluateMA(HA, kama, window)
+        #evaluated["indicators"].append(kama)
+
+        ema50 = EMA(meta_params[14], HA,1, (49+30,0+30,100+30))
+        ema50.calculate()
+        ema50.setWeight(meta_params[8])
+        self.evaluateMA(HA, ema50, window)
+        evaluated["indicators"].append(ema50)
+
+        ema30 = EMA(30, HA,1, (49+30,0+30,100+30))
+        ema30.calculate()
+        ema30.setWeight(meta_params[8])
+        self.evaluateMACross(HA, ema30, ema50, window)
+        evaluated["indicators"].append(ema30)
 
         ma50 = MovingAverage(meta_params[10], candles,0, (49+30,10+30,10+30))
         ma50.setWeight(meta_params[2])
