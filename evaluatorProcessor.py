@@ -31,7 +31,7 @@ VALIDATION_MODE = False
 MA_LAG = 200
 #MA_LAG = 300
 LOG_TOLERANCE = 3
-META_SIZE = 15
+META_SIZE = 20
 
 # TODO move to config file
 # or command line arguments
@@ -96,26 +96,30 @@ meta_params[13] = 200
 meta_option[14] = [40, 50, 60, 70, 80]
 meta_params[14] = 50
 
-# KOREL
-#meta_option[15] = [30, 50, 60]
-#meta_params[15] = 30
+# BOILINGER
+meta_option[15] = [0.25, 0.5,1,1.5,2]
+meta_params[15] = 1
 
-# BULLS DOMINANCE
-#meta_option[16] = [0, 0.5, 1]
-#meta_params[16] = 1
+# DXDI
+meta_option[16] = [0.25, 0.5,1,1.5,2]
+meta_params[16] = 1
 
-# BULLS TOLERANCE
-#meta_option[17] = [0, 0.5, 1]
-#meta_params[17] = 0
+# EMA
+meta_option[17] = [0.25, 0.5,1,1.5,2]
+meta_params[17] = 1
 
 
-# BEARS DOMINANCE
-#meta_option[18] = [0, 0.5, 1]
-#meta_params[18] = 1
+# DOMINANCE
+meta_option[18] = [0, 1, 2]
+meta_params[18] = 1
 
-# BEARS TOLERANCE
-#meta_option[19] = [0, 0.5, 1]
-#meta_params[19] = 0
+# TOLERANCE
+meta_option[19] = [1, 2]
+meta_params[19] = 0
+#
+# CONFIDENCE
+#meta_option[20] = [1, 2, 3, 4, 5]
+#meta_params[20] = 3
 
 isFirst = True
 
@@ -776,10 +780,10 @@ class Strategy():
 
             newState = "USUAL"
 
-            if bullishPoints > bearishPoints + 1 and badPoints <= 1:
+            if bullishPoints > bearishPoints + meta_params[18] and badPoints < meta_params[19]:
                 evaluated["target"][0].candles[index].markBullish()
                 newState = stateMachine.are_new_state_signal("UPTREND")
-            elif bearishPoints > bullishPoints + 1 and badPoints <= 1:
+            elif bearishPoints > bullishPoints + meta_params[18] and badPoints < meta_params[19]:
                 evaluated["target"][0].candles[index].markBearish()
                 newState = stateMachine.are_new_state_signal("DOWNTREND")
             else:
@@ -819,7 +823,7 @@ class Strategy():
         evaluated["candles"].append(HA)
 
         self.evaluateBoilinger(BOILINGER, candles, window)
-        BOILINGER.setWeight(1)
+        BOILINGER.setWeight(meta_params[15])
         evaluated["candles"].append(BOILINGER)
 
         ma200 = MovingAverage(meta_params[13],candles,0, (49,0,100))
@@ -834,21 +838,21 @@ class Strategy():
         self.evaluateMACross(candles, ma50, ma200, window)
         evaluated["indicators"].append(ma50)
 
-        #kama = KAMA(meta_params[14], HA,1, (49+30,0+30,100+30))
-        #kama.calculate()
-        #kama.setWeight(meta_params[8])
-        #self.evaluateMA(HA, kama, window)
-        #evaluated["indicators"].append(kama)
+        kama = KAMA(meta_params[14]*2, HA,1, (49+30,0+30,100+30))
+        kama.calculate()
+        kama.setWeight(meta_params[8])
+        self.evaluateMA(HA, kama, window)
+        evaluated["indicators"].append(kama)
 
         ema50 = EMA(meta_params[14], HA,1, (49+30,0+30,100+30))
         ema50.calculate()
-        ema50.setWeight(1)
+        ema50.setWeight(meta_params[17])
         #self.evaluateMA(HA, ema50, window)
         evaluated["indicators"].append(ema50)
 
-        ema30 = EMA(30, HA,1, (49+30,0+30,100+30))
+        ema30 = EMA(meta_params[14]//2, HA,1, (49+30,0+30,100+30))
         ema30.calculate()
-        ema30.setWeight(meta_params[8])
+        ema30.setWeight(meta_params[17])
         self.evaluateMACross(HA, ema30, ema50, window)
         evaluated["indicators"].append(ema30)
 
@@ -879,10 +883,10 @@ class Strategy():
         #evaluated["indicators"].append(adx)
 
         plus_di = PLUS_DI(14, candles, 3, (49,0,100))
-        plus_di.setWeight(1)
+        plus_di.setWeight(meta_params[17])
         plus_di.calculate()
         minus_di = MINUS_DI(14, candles, 3, (49,0,100))
-        minus_di.setWeight(1)
+        minus_di.setWeight(meta_params[17])
         minus_di.calculate()
         self.evaluateDXDI(candles, plus_di, minus_di, window)
         evaluated["indicators"].append(minus_di)
@@ -1407,8 +1411,8 @@ class MarketProcessingPayload(Payload):
         self.worst_perfomance = 200
         self.optmizationApplied = False
 
-        self.optimizationTrigger = 65
-        self.optimizationTarget = 75
+        self.optimizationTrigger = 70
+        self.optimizationTarget = 80
         self.optimizationCriteria = self.optimizationTrigger
 
 
