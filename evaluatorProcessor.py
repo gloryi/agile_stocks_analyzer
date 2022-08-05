@@ -470,6 +470,35 @@ def prepareHA(candles, section):
         sequence.append(haCandle)
     return sequence
 
+def prepareBoilinger(candles, section, period):
+
+        sequence = CandleSequence(section)
+
+        arrClose = []
+        for index in range(0, len(candles.candles)):
+            arrClose.append(candles.candles[index].c)
+        arrClose = np.asarray(arrClose)
+                #self.values.append(IndicatorValue( arrRSI[index], index))
+        upper, middle, lower = talib.BBANDS(arrClose, timeperiod=period)
+
+        for index in range(period):
+            sequence.append(Candle(candles.candles[index].o,
+                                   candles.candles[index].c,
+                                   candles.candles[index].h,
+                                   candles.candles[index].l,
+                                   0,
+                                   sequence,
+                                   index))
+
+            sequence.candles[-1].red = False
+            sequence.candles[-1].green = False
+
+        for index in range(period, len(candles.candles)):
+            sequence.append(Candle(middle[index],middle[index],upper[index],lower[index], 0, sequence, index))
+            sequence.candles[-1].red = False
+            sequence.candles[-1].green = False
+
+        return sequence
 
 
 
@@ -505,6 +534,18 @@ class Strategy():
         for ha in haSequence.candles[window]:
             self.checkHA( ha)
 
+    def evaluateBoilinger(self, boilingers, candles, window):
+        for candle in candles.candles[window]:
+            index = candle.index
+            boilinger = boilingers.ofIdx(index)
+
+            if candle.red and abs(candle.c - boilinger.l) > abs(candle.c - boilinger.o):
+                boilinger.markBearish()
+                boilinger.red = True
+
+            elif candle.green and abs(candle.c - boilinger.h) > abs(candle.c - boilinger.o):
+                boilinger.markBullish()
+                boilinger.green = True
 
     def evaluateMA(self, candleSequence, ma, window):
         for candle in candleSequence.candles[window]:
@@ -672,7 +713,9 @@ class Strategy():
     def run(self):
         evaluated = {"target" : [self.candlesSequence], "candles":[], "indicators":[]}
         candles = self.candlesSequence
+
         HA = prepareHA(candles, 1)
+        BOILINGER = prepareBoilinger(candles, 0, 20)
 
         longPositions = []
         shortPositions = []
@@ -684,11 +727,21 @@ class Strategy():
         HA.setWeight(meta_params[0])
         evaluated["candles"].append(HA)
 
+        self.evaluateBoilinger(BOILINGER, candles, window)
+        BOILINGER.setWeight(1)
+        evaluated["candles"].append(BOILINGER)
+
         ma200 = MovingAverage(meta_params[13],candles,0, (49,0,100))
         ma200.setWeight(meta_params[1])
         ma200.calculate()
         self.evaluateMA(candles, ma200, window)
         evaluated["indicators"].append(ma200)
+
+        ma50 = MovingAverage(meta_params[10], candles,0, (49+30,10+30,10+30))
+        ma50.setWeight(meta_params[2])
+        ma50.calculate()
+        self.evaluateMACross(candles, ma50, ma200, window)
+        evaluated["indicators"].append(ma50)
 
         #kama = KAMA(meta_params[14], HA,1, (49+30,0+30,100+30))
         #kama.calculate()
@@ -698,8 +751,8 @@ class Strategy():
 
         ema50 = EMA(meta_params[14], HA,1, (49+30,0+30,100+30))
         ema50.calculate()
-        ema50.setWeight(meta_params[8])
-        self.evaluateMA(HA, ema50, window)
+        ema50.setWeight(1)
+        #self.evaluateMA(HA, ema50, window)
         evaluated["indicators"].append(ema50)
 
         ema30 = EMA(30, HA,1, (49+30,0+30,100+30))
@@ -708,11 +761,6 @@ class Strategy():
         self.evaluateMACross(HA, ema30, ema50, window)
         evaluated["indicators"].append(ema30)
 
-        ma50 = MovingAverage(meta_params[10], candles,0, (49+30,10+30,10+30))
-        ma50.setWeight(meta_params[2])
-        ma50.calculate()
-        self.evaluateMACross(candles, ma50, ma200, window)
-        evaluated["indicators"].append(ma50)
 
 
         atr = ATR(14, candles,2, (49,0,100))
