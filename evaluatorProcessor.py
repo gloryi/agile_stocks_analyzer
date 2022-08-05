@@ -31,7 +31,7 @@ VALIDATION_MODE = False
 MA_LAG = 200
 #MA_LAG = 300
 LOG_TOLERANCE = 3
-META_SIZE = 20
+META_SIZE = 18
 
 # TODO move to config file
 # or command line arguments
@@ -110,16 +110,19 @@ meta_params[17] = 1
 
 
 # DOMINANCE
-meta_option[18] = [0, 1, 2]
-meta_params[18] = 1
+#meta_option[18] = [0, 1, 2]
+#meta_params[18] = 1
 
 # TOLERANCE
-meta_option[19] = [1, 2]
-meta_params[19] = 0
+#meta_option[19] = [1, 2]
+##meta_params[19] = 0
+
 #
 # CONFIDENCE
 #meta_option[20] = [1, 2, 3, 4, 5]
 #meta_params[20] = 3
+
+meta_duplicate = meta_params[:]
 
 isFirst = True
 
@@ -780,10 +783,10 @@ class Strategy():
 
             newState = "USUAL"
 
-            if bullishPoints > bearishPoints + meta_params[18] and badPoints < meta_params[19]:
+            if bullishPoints > bearishPoints + 1 and badPoints < 1:
                 evaluated["target"][0].candles[index].markBullish()
                 newState = stateMachine.are_new_state_signal("UPTREND")
-            elif bearishPoints > bullishPoints + meta_params[18] and badPoints < meta_params[19]:
+            elif bearishPoints > bullishPoints + 1  and badPoints < 1:
                 evaluated["target"][0].candles[index].markBearish()
                 newState = stateMachine.are_new_state_signal("DOWNTREND")
             else:
@@ -1402,21 +1405,22 @@ class MarketProcessingPayload(Payload):
         self.state = MarketStateMachine()
         self.evaluator = EVALUATOR(self.token, draw = True)
         self.metaUpdate = ""
-        self.lastTR = 0
+        self.last_tr = 0
+        self.minor_tr = 0
         self.prior_tr_info = bestKnownMetas["tr"]
         self.tweaked_tr_info = bestKnownMetas["tr"]
-        self.lastSL = None
-        self.lastTP = None
+        self.last_sl = None
+        self.last_tp = None
         self.best_perfomance = -50
         self.worst_perfomance = 200
         self.optmizationApplied = False
 
-        self.optimizationTrigger = 70
-        self.optimizationTarget = 80
-        self.optimizationCriteria = self.optimizationTrigger
+        self.optimization_trigger = 70
+        self.optimization_target = 80
+        self.optimization_criteria = self.optimization_trigger
 
 
-    def tryTweakMeta(self, O, C, H, L, V):
+    def tryTweakMeta(self, O, C, H, L, V, tweak_major=True):
         global meta_params
 
         # TODO CHECK OF ERROR OF IGNORING
@@ -1455,15 +1459,19 @@ class MarketProcessingPayload(Payload):
         virtualEvaluator.evaluate(O, C, H, L, V)
         newTR = virtualEvaluator.total
 
-        if newTR > self.lastTR:
+        tr = self.last_tr if tweak_major else self.minor_tr
+        if newTR > tr:
             simple_log("**V ", meta_params, log_level=2)
-            simple_log(f"{self.lastTR} -> {newTR}", log_level=4)
-            simple_log(f"{meta_params}", log_level=3)
-            self.prior_tr_info, self.tweaked_tr_info = self.lastTR, newTR
-            #self.evaluator.evaluate(O, C, H, L, V)
-            #simple_log(f"V->TR = {round(self.evaluator.total,4)}", log_level=2)
-            self.lastTR = newTR
-            self.optmizationApplied = True
+            if tweak_major:
+                simple_log(f"{self.last_tr} -> {newTR}", log_level=4)
+                simple_log(f"{meta_params}", log_level=3)
+                self.prior_tr_info, self.tweaked_tr_info = self.last_tr, newTR
+                self.last_tr = newTR
+                self.optmizationApplied = True
+            else:
+                simple_log(f"{self.token} |Minor| {self.minor_tr} -> {newTR}", log_level=4)
+                self.minor_tr = newTR
+
             return True
         else:
             if optimization_level >= 0:
@@ -1474,7 +1482,24 @@ class MarketProcessingPayload(Payload):
                 meta_params[random_meta3] = meta_backup3
             if optimization_level >= 3:
                 meta_params[random_meta4] = meta_backup4
+
             return False
+
+    def tweak_minor(self, O, C, H, L, V):
+        global meta_params
+        global meta_duplicate
+        meta_params, meta_duplicate = meta_duplicate, meta_params
+
+        self.tryTweakMeta(O, C, H, L, V, tweak_major = False)
+
+        meta_params, meta_duplicate = meta_duplicate, meta_params
+
+    def swap_major_minor(self):
+        global meta_params
+        global meta_duplicate
+
+        self.last_tr, self.minor_tr = self.minor_tr, self.last_tr
+        meta_params, meta_duplicate = meta_duplicate, meta_params
 
     def recvall(self, sock):
         BUFF_SIZE = 4096 # 4 KiB
@@ -1505,15 +1530,15 @@ class MarketProcessingPayload(Payload):
         return data["O"], data["C"], data["H"], data["L"], data["V"]
 
     def prepare_feedback(self):
-        simple_log("VVV ", self.lastSL, self.lastTP, log_level=1)
-        if not self.lastSL is None and not self.lastTP is None:
-            return {"SL": self.lastSL, "TP": self.lastTP}
+        simple_log("VVV ", self.last_sl, self.last_tp, log_level=1)
+        if not self.last_sl is None and not self.last_tp is None:
+            return {"SL": self.last_sl, "TP": self.last_tp}
         else:
             return None
 
     def dump_stats(self):
-        self.lastSL = None
-        self.lastTP = None
+        self.last_sl = None
+        self.last_tp = None
 
     def wait_for_event(self):
         message = ""
@@ -1529,26 +1554,39 @@ class MarketProcessingPayload(Payload):
             market_situation = self.evaluator.evaluate(O, C,
                                                        H, L,
                                                        V)
+            self.tweak_minor(O, C, H, L, V)
+
 
             if market_situation == "INIT":
                 message = self.prepare_intro()
     ***REMOVED***
 
 
-            self.lastTR = self.evaluator.total
-            simple_log(f"### TR = {round(self.lastTR,2)}, NP = {self.evaluator.poses} , DELTA = {round(self.evaluator.clean_profits - self.evaluator.clean_losses,3)} /// {market_situation}", log_level=5)
+            self.last_tr = self.evaluator.total
+            simple_log(f"### TR = {round(self.last_tr,2)}, NP = {self.evaluator.poses} , DELTA = {round(self.evaluator.clean_profits - self.evaluator.clean_losses,3)} /// {market_situation}", log_level=5)
 
-            if self.lastTR > self.best_perfomance:
-                self.best_perfomance = self.lastTR
+            if self.last_tr > self.best_perfomance:
+                self.best_perfomance = self.last_tr
                 self.evaluator.draw_image_ex(filename_special = f"{self.token}_BEST_CASE.png")
 
-            if self.lastTR < self.worst_perfomance:
-                self.worst_perfomance = self.lastTR
+            if self.last_tr < self.worst_perfomance:
+                self.worst_perfomance = self.last_tr
                 self.evaluator.draw_image_ex(filename_special = f"{self.token}_WORST_CASE.png")
 
-            #if(market_situation == "USUAL" or self.lastTR < 70):
-            if(self.lastTR < self.optimizationCriteria):
-                self.optimizationCriteria = self.optimizationTarget
+
+            #if(market_situation == "USUAL" or self.last_tr < 70):
+            if(self.last_tr < self.optimization_criteria):
+
+                if self.minor_tr > self.optimization_target:
+                    simple_log("SWITHING TO MINOR VERSION", log_level = 3)
+                    self.swap_major_minor()
+                    self.evaluator = EVALUATOR(self.token, draw = True)
+                    self.optmizationApplied = False
+                    self.optimization_criteria = self.optimization_trigger
+                    continue
+
+
+                self.optimization_criteria = self.optimization_target
 
                 time_initial = time.time()
                 is_time_remains = self.areWaitingForData(time_initial)
@@ -1571,7 +1609,7 @@ class MarketProcessingPayload(Payload):
                     self.evaluator = EVALUATOR(self.token, draw = True)
                 continue
 
-            self.optimizationCriteria = self.optimizationTrigger
+            self.optimization_criteria = self.optimization_trigger
             self.optmizationApplied = False
 
             if(market_situation == "USUAL" or market_situation == "INIT"):
@@ -1579,9 +1617,9 @@ class MarketProcessingPayload(Payload):
 
             simple_log(f"### TRIGGER = {market_situation}", log_level=5)
 
-            self.lastSL, self.lastTP = self.evaluator.sl_last, self.evaluator.tp_last
+            self.last_sl, self.last_tp = self.evaluator.sl_last, self.evaluator.tp_last
 
-            if self.lastTR < self.optimizationTrigger:
+            if self.last_tr < self.optimization_trigger:
                 continue
 
             message = self.prepare_report()
@@ -1599,16 +1637,6 @@ class MarketProcessingPayload(Payload):
             return True
         simple_log("FETCHING DATA",log_level = 2)
         return False
-
-    #def tweakFrequency(self, market_situation):
-
-        #if market_situation == "USUAL":
-            #time_for_next_update = INTERVAL_M
-        #elif market_situation == "SUSPICIOUS":
-            #time_for_next_update = INTERVAL_M
-        #else:
-            #time_for_next_update = INTERVAL_M
-        #return time_for_next_update
 
     def prepare_intro(self):
         message = {}
