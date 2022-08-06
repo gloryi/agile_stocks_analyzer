@@ -43,16 +43,16 @@ meta_params = [1 for _ in range(META_SIZE)]
 meta_option = [None for _ in range(META_SIZE)]
 meta_indexes = [i for i in range(META_SIZE)]
 
-meta_option[0] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[0] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[0] = 1
 
-meta_option[1] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[1] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[1] = 1
 
-meta_option[2] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[2] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[2] = 1
 
-meta_option[3] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[3] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[3] = 1
 
 def generateSLTP():
@@ -64,27 +64,27 @@ def generateSLTP():
 meta_option[4] = generateSLTP
 meta_params[4] = [1.5,2]
 
-meta_option[5] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[5] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[5] = 1
 
-meta_option[6] = lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[6] = lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[6] = 1
 
-meta_option[7] = lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[7] = lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[7] = 1
 
-meta_option[8] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[8] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[8] = 1
 
-meta_option[9] =  lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[9] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[9] = 1
 
 # FAST MA
-meta_option[10] =  lambda : random.randrange(30, 70,5)
+meta_option[10] =  lambda : random.randrange(30, 70,10)
 meta_params[10] = 40
 
 # RSI
-meta_option[11] = lambda : random.randrange(30, 70,5)
+meta_option[11] = lambda : random.randrange(14, 26,3)
 meta_params[11] = 14
 
 def generateHKCOMP():
@@ -97,23 +97,23 @@ meta_option[12] = generateHKCOMP
 meta_params[12] = [3,5]
 
 # SLOW MA
-meta_option[13] =  lambda: random.randrange(160, 200,5)
+meta_option[13] =  lambda: random.randrange(180, 200,25)
 meta_params[13] = 200
 
 # KAMA
-meta_option[14] = lambda : random.randrange(40, 80, 5)
+meta_option[14] = lambda : random.randrange(40, 80, 10)
 meta_params[14] = 50
 
 # BOILINGER
-meta_option[15] = lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[15] = lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[15] = 1
 
 # DXDI
-meta_option[16] = lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[16] = lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[16] = 1
 
 # EMA
-meta_option[17] = lambda : random.choice([0, 0.5, 1, 1.5, 2, 2.5])
+meta_option[17] = lambda : random.choice([0, 0.5, 1, 1.5, 2])
 meta_params[17] = 1
 
 
@@ -321,26 +321,47 @@ class Indicator():
         self.values = []
         self.weight = 1
         self.primaryColor = primaryColor
+        self.maxValue = None
+        self.minValue = None
+        self.averageValue = None
 
     def calculate(self):
         for candle in self.candleSequence.candles:
-            self.values.append(IndicatorValue(candle.h, candle.index))
+            self.add_value(IndicatorValue(candle.h, candle.index))
 
     def setWeight(self, weight):
         self.weight = weight
 
+    def add_value(self, value):
+
+        if value.value > maxValue.value or maxValue is None:
+            maxValue = value
+
+        if value.value < minValue.value or minValue is None:
+            minValue = value
+
+        average = (average * len(self.values) + value.value) / len(self.values)  +1
+
+        self.values.append(value)
+
+    def _toArrayIndex(self, index):
+        return index  - self.values[0].index
+
+
     def ofIdx(self, idx):
-        for value in self.values:
-            if value.index == idx:
-                return value
+        #for value in self.values:
+            #if value.index == idx:
+                #return value
+        return self.values[self._toArrayIndex(idx)]
 
     def maxV(self, p1, p2):
-        return max(_.value for _ in filter(lambda _ : _.index >=p1 and _.index<=p2, self.values))
+        return max(_.value for _ in self.values[self._toArrayIndex(p1): self._toArrayIndex(p2)])
+
     def minV(self, p1, p2):
-        return min(_.value for _ in filter(lambda _ : _.index >=p1 and _.index<=p2, self.values))
+        return min(_.value for _ in self.values[self._toArrayIndex(p1): self._toArrayIndex(p2)])
 
     def average(self, p1, p2):
-        return sum(_.value for _ in filter(lambda _ : _.index >=p1 and _.index<=p2, self.values))/(p2-p1)
+        return sum(_.value for _ in self.values[self._toArrayIndex(p1): self._toArrayIndex(p1)])/(p2-p1)
 
 class MovingAverage(Indicator):
     def __init__(self, period, *args, **kw):
@@ -1445,7 +1466,7 @@ class MarketProcessingPayload(Payload):
         # OPTIMIZATION PRIOR TO
         # PREVIOUS 100
 
-        optimization_level = random.randint(0,  3)
+        optimization_level = random.randint(0,  2)
 
         if optimization_level >= 0:
             random_meta1 = self.get_random_meta_idx()
@@ -1459,9 +1480,6 @@ class MarketProcessingPayload(Payload):
             random_meta3 = self.get_random_meta_idx()
             meta_backup3 = meta_params[random_meta3]
 
-        if optimization_level >= 3:
-            random_meta4 = self.get_random_meta_idx()
-            meta_backup4 = meta_params[random_meta4]
 
 
         if optimization_level >= 0:
@@ -1470,8 +1488,6 @@ class MarketProcessingPayload(Payload):
             meta_params[random_meta2] = meta_option[random_meta2]()
         if optimization_level >= 2:
             meta_params[random_meta3] = meta_option[random_meta3]()
-        if optimization_level >= 3:
-            meta_params[random_meta4] = meta_option[random_meta4]()
 
         virtualEvaluator = EVALUATOR(self.token, draw = False, virtual = True)
         virtualEvaluator.evaluate(O, C, H, L, V)
@@ -1498,8 +1514,6 @@ class MarketProcessingPayload(Payload):
                 meta_params[random_meta2] = meta_backup2
             if optimization_level >= 2:
                 meta_params[random_meta3] = meta_backup3
-            if optimization_level >= 3:
-                meta_params[random_meta4] = meta_backup4
 
             return False
 
@@ -1512,7 +1526,7 @@ class MarketProcessingPayload(Payload):
         virtualEvaluator.evaluate(O, C, H, L, V)
         self.minor_tr = virtualEvaluator.total
 
-        base_case_optimizations = 3
+        base_case_optimizations = 2
         optimization_number = 0
 
         while optimization_number < base_case_optimizations:
