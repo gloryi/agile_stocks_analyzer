@@ -612,6 +612,8 @@ def prepareBoilinger(candles, section, period):
 class Strategy():
     def __init__(self, candlesSequence):
         self.candlesSequence = candlesSequence
+        self.balanceCummulative = []
+        self.powerCummulative = []
 
     def analyzeHASequence(self, sequence, targetColor, minSignal, minSetup):
         if targetColor != sequence[0]:
@@ -811,11 +813,24 @@ class Strategy():
                 maxPoints +=indicatorSequence.weight
 
             newState = "USUAL"
+            currentBalacne = bullishPoints - bearishPoints
 
-            if bullishPoints > bearishPoints + 1 and badPoints < 1:
+            self.balanceCummulative.append(currentBalacne)
+            self.powerCummulative.append(bullishPoints + bearishPoints)
+
+            lastPower = sum(self.powerCummulative[-3:])
+            lastBalance = sum(self.balanceCummulative[-3:])
+            avgPower = lastPower/3
+            avgBalance = lastBalance/3
+
+            marketState = lastBalance / lastPower
+
+            if badPoints > 0:
+                newState = stateMachine.are_new_state_signal("DIRTY")
+            elif marketState > 0.7 and currentBalacne > avgBalance:
                 evaluated["target"][0].candles[index].markBullish()
                 newState = stateMachine.are_new_state_signal("UPTREND")
-            elif bearishPoints > bullishPoints + 1  and badPoints < 1:
+            elif marketState < -0.7 and currentBalacne < avgBalance:
                 evaluated["target"][0].candles[index].markBearish()
                 newState = stateMachine.are_new_state_signal("DOWNTREND")
             else:
@@ -1171,10 +1186,10 @@ class MarketStateMachine():
             #return self.usual
 
 
-        if self.bullishConfidence == 3 :
+        if self.bullishConfidence == 2 :
            return self.rising
 
-        elif self.bearishConfidence == 3 :
+        elif self.bearishConfidence == 2 :
             return self.falling
 
         else:
