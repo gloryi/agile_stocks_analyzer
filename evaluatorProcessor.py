@@ -823,7 +823,7 @@ class Strategy():
             avgPower = lastPower/3
             avgBalance = lastBalance/3
 
-            marketState = lastBalance / lastPower
+            marketState = lastBalance / lastPower if lastPower > 0 else 0
 
             if badPoints > 0:
                 newState = stateMachine.are_new_state_signal("DIRTY")
@@ -888,7 +888,7 @@ class Strategy():
         kama = KAMA(meta_params[14]*2, HA,1, (49+30,0+30,100+30))
         kama.calculate()
         kama.setWeight(meta_params[8])
-        self.evaluateMA(HA, kama, window)
+        #self.evaluateMA(HA, kama, window)
         evaluated["indicators"].append(kama)
 
         ema50 = EMA(meta_params[14], HA,1, (49+30,0+30,100+30))
@@ -908,13 +908,13 @@ class Strategy():
         atr = ATR(14, candles,2, (49,0,100))
         atr.setWeight(meta_params[3])
         atr.calculate()
-        self.evaluateATR(candles, atr, window)
+        #self.evaluateATR(candles, atr, window)
         evaluated["indicators"].append(atr)
 
         rsi = RSI(meta_params[11],candles,3, (49,0,100))
         rsi.setWeight(meta_params[6])
         rsi.calculate()
-        self.evaluateRSI(candles, rsi, window)
+        #self.evaluateRSI(candles, rsi, window)
         evaluated["indicators"].append(rsi)
 
         macd = MACD(12, 26, 9,candles, 3, (49,0,100))
@@ -923,11 +923,11 @@ class Strategy():
         self.evaluateMACD(candles, macd, window)
         evaluated["indicators"].append(macd)
 
-        #adx = ADX(14, candles, 3, (49,0,100))
-        #adx.setWeight(1)
-        #adx.calculate()
-        #self.evaluateADX(candles, adx, window)
-        #evaluated["indicators"].append(adx)
+        adx = ADX(14, candles, 3, (49,0,100))
+        adx.setWeight(1)
+        adx.calculate()
+        self.evaluateADX(candles, adx, window)
+        evaluated["indicators"].append(adx)
 
         plus_di = PLUS_DI(14, candles, 3, (49,0,100))
         plus_di.setWeight(meta_params[17])
@@ -948,7 +948,7 @@ class Strategy():
         volume = VOLUME(candles, 2, (49,0,100))
         volume.setWeight(meta_params[9])
         volume.calculate()
-        self.evaluateVolume(candles,volume, window)
+        #self.evaluateVolume(candles,volume, window)
         evaluated["indicators"].append(volume)
 
         self.checkConfluence(evaluated, window)
@@ -1625,6 +1625,7 @@ class MarketProcessingPayload(Payload):
 
             self.last_tr = self.evaluator.total
             simple_log(f"### TR = {round(self.last_tr,2)}, NP = {self.evaluator.poses} , DELTA = {round(self.evaluator.clean_profits - self.evaluator.clean_losses,3)} /// {market_situation}", log_level=5)
+            simple_log(f"{meta_params}", log_level=5)
 
             if self.last_tr > self.best_perfomance:
                 self.best_perfomance = self.last_tr
