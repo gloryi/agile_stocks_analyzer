@@ -12,8 +12,8 @@ import cv2 as cv
 import numpy as np
 
 ***REMOVED***
-WINDOW_SIZE = 1000
-MAX_DEPTH = 5000
+WINDOW_SIZE = 800
+MAX_DEPTH = 1000
 ***REMOVED***
 
 ***REMOVED***

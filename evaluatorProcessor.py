@@ -17,6 +17,7 @@ from talib import ADX as talibADX
 from talib import PLUS_DI as talibPLUS_DI
 from talib import MINUS_DI as talibMINUS_DI
 from talib import CORREL as talibCORREL
+from talib import ADOSC as talibADOSC
 from collections import namedtuple
 import cv2 as cv
 import numpy as np
@@ -281,7 +282,7 @@ class CandleSequence():
 
 
 class IndicatorValue():
-    def __init__(self, value, index):
+    def __init__(self, value, index, rising = False):
         self.value = value
         self.index = index
         self.longEntry = False
@@ -289,6 +290,13 @@ class IndicatorValue():
         self.bearish = False
         self.bullish = False
         self.bad = False
+
+        if not rising:
+            self.rising = False
+            self.falling = True
+        else:
+            self.rising = True
+            self.falling = False
 
     def goLong(self):
         self.longEntry = True
@@ -470,6 +478,41 @@ class ADX(Indicator):
         for index in range(self.period, len(self.candleSequence.candles)):
             self.values.append(IndicatorValue( arrADX[index], index))
 
+class ADOSC(Indicator):
+    def __init__(self, fastperiod, slowperiod, *args, **kw):
+        self.fastperiod = fastperiod
+        self.slowperiod = slowperiod
+        super().__init__(*args, **kw)
+
+    def calculate(self):
+        arrHigh = []
+        arrLow = []
+        arrClose = []
+        arrVolume = []
+
+        for index in range(0, len(self.candleSequence.candles)):
+            arrHigh.append(self.candleSequence.candles[index].h)
+            arrLow.append(self.candleSequence.candles[index].l)
+            arrClose.append(self.candleSequence.candles[index].c)
+            arrVolume.append(self.candleSequence.candles[index].v)
+
+        arrHigh = np.asarray(arrHigh)
+        arrLow = np.asarray(arrLow)
+        arrClose = np.asarray(arrClose)
+        arrVolume = np.asarray(arrVolume)
+
+        arrADOSC = talibADOSC(arrHigh, arrLow, arrClose, arrVolume, self.fastperiod, self.slowperiod)
+        for index in range(self.slowperiod, len(self.candleSequence.candles)):
+
+            rising = False
+
+            if len(self.values) > 0:
+                if self.values[-1].value < arrADOSC[index]:
+                    rising = True
+
+            self.values.append(IndicatorValue( arrADOSC[index], index, rising))
+
+
 class ATR(Indicator):
     def __init__(self, period, *args, **kw):
         self.period=period
@@ -526,7 +569,14 @@ class MACD(Indicator):
         arrClose = np.asarray(arrClose)
         macd, macdsignal, macdhist = talibMACD(arrClose, self.fastperiod, self.slowperiod, self.signalperiod)
         for index in range(self.slowperiod, len(self.candleSequence.candles)):
-            self.values.append(IndicatorValue( macdhist[index], index))
+
+            rising = False
+
+            if len(self.values) > 0:
+                if self.values[-1].value < macdhist[index]:
+                    rising = True
+
+            self.values.append(IndicatorValue( macdhist[index], index, rising))
 
 
 class VOLUME(Indicator):
@@ -738,9 +788,23 @@ class Strategy():
         for candle in candleSequence.candles[window]:
 
             indicatorValue = macd.ofIdx(candle.index)
+            #if indicatorValue.value > 0 and indicatorValue.rising:
             if indicatorValue.value > 0:
                 indicatorValue.markBullish()
-            elif indicatorValue.value <= 0:
+            #elif indicatorValue.value < 0 and indicatorValue.falling:
+            elif indicatorValue.value < 0:
+                indicatorValue.markBearish()
+
+    def evaluateADOSC(self, candleSequence, adosc, window):
+
+        for candle in candleSequence.candles[window]:
+
+            indicatorValue = adosc.ofIdx(candle.index)
+
+            if indicatorValue.value > 0 and indicatorValue.rising:
+                indicatorValue.markBullish()
+
+            elif indicatorValue.value < 0 and indicatorValue.falling:
                 indicatorValue.markBearish()
 
     def evaluateVolume(self, candleSequence, volume, window):
@@ -917,11 +981,18 @@ class Strategy():
         #self.evaluateRSI(candles, rsi, window)
         evaluated["indicators"].append(rsi)
 
+        # I SHOULD INCLUDE DIRECTION TOO? I MEAN AS FOR ADOSC?
         macd = MACD(12, 26, 9,candles, 3, (49,0,100))
         macd.setWeight(meta_params[7])
         macd.calculate()
         self.evaluateMACD(candles, macd, window)
         evaluated["indicators"].append(macd)
+
+        #adosc = ADOSC(3, 10, candles, 2, (49,0,100))
+        #adosc.setWeight(meta_params[9])
+        #adosc.calculate()
+        #self.evaluateADOSC(candles, adosc, window)
+        #evaluated["indicators"].append(adosc)
 
         adx = ADX(14, candles, 3, (49,0,100))
         adx.setWeight(1)
@@ -1270,11 +1341,11 @@ class EVALUATOR():
         atrValue = atr.ofIdx(targetCandle.index).value
         sl, tp = targetCandle.c, targetCandle.c
         if targetCandle.bullish:
-            sl = targetCandle.c - atrValue * meta_params[4][0]
-            tp = targetCandle.c + atrValue * meta_params[4][1]
+            sl = targetCandle.l - atrValue * meta_params[4][0]
+            tp = targetCandle.h + atrValue * meta_params[4][1]
         elif targetCandle.bearish:
-            sl = targetCandle.c + atrValue * meta_params[4][0]
-            tp = targetCandle.c - atrValue * meta_params[4][1]
+            sl = targetCandle.h + atrValue * meta_params[4][0]
+            tp = targetCandle.l - atrValue * meta_params[4][1]
 
         return sl, tp
 
@@ -1355,14 +1426,14 @@ class EVALUATOR():
                 sltp = ""
                 atrValue = atr.ofIdx(candle.index).value
                 if candle.isLong():
-                   stopLoss = candle.c - atrValue * meta_params[4][0]
-                   takeProfit = candle.c + atrValue * meta_params[4][1]
+                   stopLoss = candle.l - atrValue * meta_params[4][0]
+                   takeProfit = candle.h + atrValue * meta_params[4][1]
                    candle.TP = takeProfit
                    candle.SL = stopLoss
                    sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles), numPosesEx)
                 elif candle.isShort():
-                   stopLoss = candle.c + atrValue * meta_params[4][0]
-                   takeProfit = candle.c - atrValue * meta_params[4][1]
+                   stopLoss = candle.h + atrValue * meta_params[4][0]
+                   takeProfit = candle.l - atrValue * meta_params[4][1]
                    candle.TP = takeProfit
                    candle.SL = stopLoss
                    sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles), numPosesEx)
