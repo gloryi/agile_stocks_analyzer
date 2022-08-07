@@ -24,12 +24,54 @@ import numpy as np
 from tqdm import tqdm
 
 TOKEN_NAME = "UNKNOWN"
+TEST_CASE = "UNKNOWN"
 MA_LAG = 200
 ***REMOVED***
 VALIDATION_MODE = False
 LOG_TOLERANCE = 3
 ***REMOVED***
 ***REMOVED***
+***REMOVED***
+
+class RandomMachine():
+    def __init__(self, initial_seed, keys_depth = 100):
+        random.seed(initial_seed)
+        self.keys_depth = keys_depth
+        self.primary_keys = []
+        self.refresh_keys()
+
+    def refresh_keys(self):
+        self.primary_keys = list(random.randint(1,10**10) for _ in range(self.keys_depth))
+
+    def update_seed(self):
+
+        if len(self.primary_keys) <= 1:
+            random.seed(self.primary_keys[-1])
+            self.refresh_keys()
+
+        random.seed(self.primary_keys.pop())
+
+    def choice(self, options):
+        self.update_seed()
+        return random.choice(options)
+
+    def randint(self, a, b):
+        self.update_seed()
+        return random.randint(a,b)
+
+    def randrange(self, a, b, step):
+        self.update_seed()
+        return random.randrange(a, b, step)
+
+    def uniform(self, a, b):
+        self.update_seed()
+        return random.uniform(a, b)
+
+    def  shuffle(self, container):
+        random.shuffle(container)
+
+RANDOM = None
+
 metaParams =[1 for _ in range(10)]
 
 metaOptions = []
@@ -743,28 +785,27 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
         for v1, v2 in zip(indicator.values[:-1], indicator.values[1:]):
             drawIndicatorSegment(img, zone, v1, v2, minV, maxV, p1, p2, indicator.primaryColor)
 
-    depth = len(candles[0].candles[p1:p2])
+    depth = len(candles[0].candles[p1:p2]) + 1
     print(f"DRAWING {depth} candles")
 
-
-    H = 1500
-    W = 1100
+    PIXELS_PER_CANDLE = 4
+    H, W = 1500, depth * PIXELS_PER_CANDLE
 
     img = np.zeros((H,W,3), np.uint8)
 
     zones = []
-    firstSquare  = [H/7*1,  0,H/7*3, W-20]
-    drawSquareInZone(img, firstSquare, 0,0,0.95,0.95,(10,10,10))
+    firstSquare  = [H/7*1,  20,H/7*3, W-20]
+    drawSquareInZone(img, firstSquare, 0,0,1,1,(10,10,10))
     firstZone = []
     zones.append(firstSquare)
-    secondSquare = [H/7*4,0,H/7*5,   W-19]
-    drawSquareInZone(img, secondSquare, 0,0,0.95,0.95,(20,20,20))
+    secondSquare = [H/7*4,20,H/7*5,   W-20]
+    drawSquareInZone(img, secondSquare, 0,0,1,1,(20,20,20))
     zones.append(secondSquare)
-    thirdSquare = [H/7*5,0,H/7*6,   W-20]
-    drawSquareInZone(img, thirdSquare, 0,0,0.95,0.95,(30,30,30))
+    thirdSquare = [H/7*5,20,H/7*6,   W-20]
+    drawSquareInZone(img, thirdSquare, 0,0,1,1,(30,30,30))
     zones.append(thirdSquare)
-    forthSquare = [H/7*6,0,H,   W-20]
-    drawSquareInZone(img, forthSquare, 0,0,0.95,0.95,(40,40,40))
+    forthSquare = [H/7*6,20,H,   W-20]
+    drawSquareInZone(img, forthSquare, 0,0,1,1,(40,40,40))
     zones.append(forthSquare)
 
     zoneDrawables = [{"zone" : _, "candles":[],"indicators":[], "min":0,"max":0} for _ in range(len(zones))]
@@ -797,7 +838,7 @@ class Payload():
 
     def wait_for_event(self):
         time.sleep(15)
-        message = random.choice(self.random_words_list)
+        message = RANDOM.choice(self.random_words_list)
         return message
 
 class MarketStateMachine():
@@ -866,6 +907,8 @@ class EVALUATOR():
         self.generatedStats = ""
         self.image_path = ""
 
+        self.evaluatedTMP = {}
+
     def calculateRate(self):
 
         winRate = self.tp/(self.poses)*100
@@ -903,11 +946,19 @@ class EVALUATOR():
 
 
 
-    def generate_image(self, candles, indicators, p1, p2, directory):
-        image = generateOCHLPicture(candles,indicators, p1, p2)
-        #print(directory)
-        path = os.path.join(directory,f"{self.token}.png")
-        cv.imwrite(path,image)
+    def generate_image(self, candles, indicators, p1, p2,
+                       directory,
+                       filename_special = None, draw_anyway = False):
+        filename = ""
+        if filename_special is None:
+            filename = f"{self.token}.jpg"
+        else:
+            filename = filename_special
+        path = os.path.join(directory, filename)
+        if not VALIDATION_MODE or draw_anyway:
+            image = generateOCHLPicture(candles,indicators, p1, p2)
+            #simple_log(directory)
+            cv.imwrite(path,image)
         return path
 
     def calculateATR(self, candles):
@@ -965,6 +1016,37 @@ class EVALUATOR():
                     numSL += 1
         return numPoses, numSL, numTP
 
+    def prepare_directory(self, major):
+        expectedPath = os.path.join(os.getcwd(), "dataset0", major)
+        isExist = os.path.exists(expectedPath)
+
+        if not isExist:
+            os.makedirs(expectedPath)
+
+        return expectedPath
+
+    def validate_asset_name(self, asset):
+        if "_" not in asset:
+            raise Exception ("Asset name must follow notation MAJOR_MINOR_TWEEAKS_MODEN")
+
+    def parse_asset_name(self, asset):
+        self.validate_asset_name(asset)
+        major, *rest = asset.split("_")
+        basename = "_".join(rest)
+        return major, basename
+
+    def draw_image_ex(self, filename_postfix):
+
+        major, minor = self.parse_asset_name(TOKEN_NAME + "_" + TEST_CASE)
+        major_dir = self.prepare_directory(major)
+
+        self.image_path = self.generate_image(self.evaluatedTMP["target"] + self.evaluatedTMP["candles"],
+                                              self.evaluatedTMP["indicators"],
+                                              MA_LAG,
+                                              self.lastCandleTMP.index ,
+                                              directory = major_dir,
+                                              filename_special = minor + "_" + filename_postfix + ".jpg",
+                                              draw_anyway = True)
 
     def evaluate(self, O,C,H,L,V):
 
@@ -1003,6 +1085,9 @@ class EVALUATOR():
             elif lastCandle.bearish:
                 signal_type = self.stateMachine.are_new_state_signal("DOWNTREND")
 
+            self.evaluatedTMP = evaluated
+            self.lastCandleTMP = lastCandle
+
             global isFirst
             if isFirst:
                isFirst = False
@@ -1033,6 +1118,9 @@ class MarketProcessingPayload(Payload):
         self.tweakedTR = bestKnownMetas["EURUSD"]["tr"]
         self.lastSL = None
         self.lastTP = None
+        self.last_tr = None
+        self.best_perfomance = 0
+        self.worst_perfomance = 200
 
     def settleMeta(self):
         global metaParams
@@ -1050,10 +1138,10 @@ class MarketProcessingPayload(Payload):
         print(self.token, " TWEAKING")
         tr = bestKnownMetas["EURUSD"]["tr"]
         print(self.token, " TR = ", tr)
-        randomMeta = random.randint(0,9)
+        randomMeta = RANDOM.randint(0,9)
         self.tweakedInd = randomMeta
         self.tweaked = metaParams[randomMeta]
-        metaParams[self.tweakedInd] = random.choice(metaOptions[self.tweakedInd])
+        metaParams[self.tweakedInd] = RANDOM.choice(metaOptions[self.tweakedInd])
         virtualEvaluator = EVALUATOR(self.token, processBest = False, draw = False, virtual = True)
         newTR = virtualEvaluator.evaluate(O, C, H, L, V)
         if newTR > tr:
@@ -1078,7 +1166,6 @@ class MarketProcessingPayload(Payload):
     def fetch_market_data(self, feedback = None):
 
         HOST = "127.0.0.1"
-        ***REMOVED***
         data = {}
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((HOST, PORT))
@@ -1123,6 +1210,19 @@ class MarketProcessingPayload(Payload):
 
             time_for_next_update = self.tweakFrequency(market_situation)
 
+            self.last_tr = self.evaluator.total
+
+            if self.last_tr == 100:
+                self.evaluator.draw_image_ex(filename_postfix = f"TOXIC_CASE")
+
+            elif self.last_tr > self.best_perfomance:
+                self.best_perfomance = self.last_tr
+                self.evaluator.draw_image_ex(filename_postfix = f"BEST_CASE")
+
+            elif self.last_tr < self.worst_perfomance and self.last_tr > 0:
+                self.worst_perfomance = self.last_tr
+                self.evaluator.draw_image_ex(filename_postfix = f"WORST_CASE")
+
             if(market_situation == "USUAL" or forecastTR < 70):
                 # DO TIMINGS BASED
                 self.tryTweakMeta(O,C,H,L,V)
@@ -1144,6 +1244,7 @@ class MarketProcessingPayload(Payload):
                 continue
 
             self.lastSL, self.lastTP = self.evaluator.sl_last, self.evaluator.tp_last
+
 
             message = {}
             if not VALIDATION_MODE:
@@ -1216,15 +1317,41 @@ if __name__ == '__main__':
     else:
         VALIDATION_MODE = False
 
+    if len (sys.argv) > 3:
+        RANDOM_MODE = sys.argv[3]
+
+        if RANDOM_MODE == "R":
+            TEST_CASE = RANDOM_MODE
+            print("RANDOM MODE")
+            SEED = time.time()
+        elif RANDOM_MODE == "ORCHID":
+            TEST_CASE = RANDOM_MODE
+            SEED = 62192
+            print(f"FIXED TEST: {RANDOM_MODE} || {SEED}")
+        elif RANDOM_MODE == "AKMENS":
+            TEST_CASE = RANDOM_MODE
+            SEED = 5951624
+            print(f"FIXED TEST: {RANDOM_MODE} || {SEED}")
+        elif RANDOM_MODE == "BLAKE":
+            TEST_CASE = RANDOM_MODE
+            SEED = 595162405
+            print(f"FIXED TEST: {RANDOM_MODE} || {SEED}")
+
+        else:
+            raise Exception("Random or fixed mod needs to be specified")
+
+    RANDOM = RandomMachine(SEED)
+
+    if len(sys.argv) >4:
+        PORT = int(sys.argv[4])
+    else:
+        ***REMOVED***
+
     with open(f"bestMetas{timeframe}.json", "r") as bestEvaluatedFile:
         bestKnownMetas = json.load(bestEvaluatedFile)
         if "EURUSD" not in bestKnownMetas:
             print(f"ASSET {TOKEN_NAME} IS NOT PRE_PROCESSED")
             exit()
-
-
-    if len (sys.argv) > 3:
-        LOG_TOLERANCE = int(sys.argv[3])
 
 
     log.startLogging(sys.stdout)

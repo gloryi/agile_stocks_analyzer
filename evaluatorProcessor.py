@@ -28,11 +28,13 @@ import numpy as np
 from tqdm import tqdm
 
 TOKEN_NAME = "UNKNOWN"
+TEST_CASE = "UNKNOWN"
 VALIDATION_MODE = False
 MA_LAG = 200
 #MA_LAG = 300
 LOG_TOLERANCE = 3
 META_SIZE = 18
+***REMOVED***
 
 # TODO move to config file
 # or command line arguments
@@ -40,57 +42,99 @@ META_SIZE = 18
 ***REMOVED***
 ***REMOVED***
 
+class RandomMachine():
+    def __init__(self, initial_seed, keys_depth = 100):
+        random.seed(initial_seed)
+        self.keys_depth = keys_depth
+        self.primary_keys = []
+        self.refresh_keys()
+
+    def refresh_keys(self):
+        self.primary_keys = list(random.randint(1,10**10) for _ in range(self.keys_depth))
+
+    def update_seed(self):
+
+        if len(self.primary_keys) <= 1:
+            random.seed(self.primary_keys[-1])
+            self.refresh_keys()
+
+        random.seed(self.primary_keys.pop())
+
+    def choice(self, options):
+        self.update_seed()
+        return random.choice(options)
+
+    def randint(self, a, b):
+        self.update_seed()
+        return random.randint(a,b)
+
+    def randrange(self, a, b, step):
+        self.update_seed()
+        return random.randrange(a, b, step)
+
+    def uniform(self, a, b):
+        self.update_seed()
+        return random.uniform(a, b)
+
+    def  shuffle(self, container):
+        random.shuffle(container)
+
+RANDOM = None
+
+
+
+
 meta_params = [1 for _ in range(META_SIZE)]
 meta_option = [None for _ in range(META_SIZE)]
 meta_indexes = [i for i in range(META_SIZE)]
 
-meta_option[0] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[0] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[0] = 1
 
-meta_option[1] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[1] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[1] = 1
 
-meta_option[2] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[2] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[2] = 1
 
-meta_option[3] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[3] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[3] = 1
 
 def generateSLTP():
-    sl = random.choice([1.5, 2, 2.5, 3])
-    tp_dominance = random.choice([0.5, 1.0, 1.5, 2.0])
+    sl = RANDOM.choice([1.5, 2, 2.5, 3])
+    tp_dominance = RANDOM.choice([0.5, 1.0, 1.5, 2.0])
     tp = sl + tp_dominance
     return sl, tp
 
 meta_option[4] = generateSLTP
 meta_params[4] = [1.5,2]
 
-meta_option[5] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[5] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[5] = 1
 
-meta_option[6] = lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[6] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[6] = 1
 
-meta_option[7] = lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[7] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[7] = 1
 
-meta_option[8] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[8] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[8] = 1
 
-meta_option[9] =  lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[9] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[9] = 1
 
 # FAST MA
-meta_option[10] =  lambda : random.randrange(30, 70,10)
+meta_option[10] =  lambda : RANDOM.randrange(30, 70,10)
 meta_params[10] = 40
 
 # RSI
-meta_option[11] = lambda : random.randrange(14, 26,3)
+meta_option[11] = lambda : RANDOM.randrange(14, 26,3)
 meta_params[11] = 14
 
 def generateHKCOMP():
-    red = random.randint(2,4)
-    green = random.randint(2, 5)
+    red = RANDOM.randint(2,4)
+    green = RANDOM.randint(2, 5)
     return red,green
 
 # HA condition
@@ -98,23 +142,23 @@ meta_option[12] = generateHKCOMP
 meta_params[12] = [3,5]
 
 # SLOW MA
-meta_option[13] =  lambda: random.randrange(180, 200,25)
+meta_option[13] =  lambda: RANDOM.randrange(180, 200,25)
 meta_params[13] = 200
 
 # KAMA
-meta_option[14] = lambda : random.randrange(40, 80, 10)
+meta_option[14] = lambda : RANDOM.randrange(40, 80, 10)
 meta_params[14] = 50
 
 # BOILINGER
-meta_option[15] = lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[15] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[15] = 1
 
 # DXDI
-meta_option[16] = lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[16] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[16] = 1
 
 # EMA
-meta_option[17] = lambda : random.choice([0, 0.5, 1, 1.5, 2])
+meta_option[17] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[17] = 1
 
 
@@ -576,7 +620,7 @@ class MACD(Indicator):
                 if self.values[-1].value < macdhist[index]:
                     rising = True
 
-            self.values.append(IndicatorValue( macdhist[index], index, rising))
+            self.values.append(IndicatorValue( macdhist[index]*2000, index, rising))
 
 
 class VOLUME(Indicator):
@@ -611,19 +655,25 @@ def prepareCandles(O, C, H, L, V, section):
         sequence.append(Candle(o,c,h,l,v,sequence,len(sequence.candles)))
     return sequence
 
-def calculateHA(prev, current, sequence):
-    hC = (current.o + current.c + current.h + current.l)/4
-    hO = (prev.o + prev.c)/2
-    hH = max(current.o, current.h, current.c)
-    hL = min(current.o, current.h, current.c)
+def calculateHA(prev, current, sequence, multiplier = 1):
+    hC = (current.o*multiplier + current.c*multiplier + current.h*multiplier + current.l*multiplier)/4
+    hO = (prev.o*multiplier + prev.c*multiplier)/2
+    hH = max(current.o*multiplier, current.h*multiplier, current.c*multiplier)
+    hL = min(current.o*multiplier, current.h*multiplier, current.c*multiplier)
     hV = current.v
     return Candle(hO, hC, hH, hL, hV, sequence, len(sequence.candles))
 
 def prepareHA(candles, section):
+    MULTIPLIER = 0.98
     sequence = CandleSequence(section)
-    sequence.append(Candle(candles[0].o,candles[0].c,candles[0].h,candles[0].l,candles[0].v,sequence,0))
+    sequence.append(Candle(candles[0].o*MULTIPLIER,
+                           candles[0].c*MULTIPLIER,
+                           candles[0].h*MULTIPLIER,
+                           candles[0].l*MULTIPLIER,
+                           candles[0].v,
+                           sequence,0))
     for prevCandle, currentCandle in zip(candles[:-1], candles[1:]):
-        haCandle = calculateHA(prevCandle, currentCandle, sequence)
+        haCandle = calculateHA(prevCandle, currentCandle, sequence, MULTIPLIER)
         sequence.append(haCandle)
     return sequence
 
@@ -920,7 +970,7 @@ class Strategy():
         evaluated = {"target" : [self.candlesSequence], "candles":[], "indicators":[]}
         candles = self.candlesSequence
 
-        HA = prepareHA(candles, 1)
+        HA = prepareHA(candles, 0)
         BOILINGER = prepareBoilinger(candles, 0, 20)
 
         longPositions = []
@@ -949,19 +999,19 @@ class Strategy():
         self.evaluateMACross(candles, ma50, ma200, window)
         evaluated["indicators"].append(ma50)
 
-        kama = KAMA(meta_params[14]*2, HA,1, (49+30,0+30,100+30))
+        kama = KAMA(meta_params[14]*2, HA,0, (49+30,0+30,100+30))
         kama.calculate()
         kama.setWeight(meta_params[8])
         #self.evaluateMA(HA, kama, window)
         evaluated["indicators"].append(kama)
 
-        ema50 = EMA(meta_params[14], HA,1, (49+30,0+30,100+30))
+        ema50 = EMA(meta_params[14], HA,0, (49+30,0+30,100+30))
         ema50.calculate()
         ema50.setWeight(meta_params[17])
         #self.evaluateMA(HA, ema50, window)
         evaluated["indicators"].append(ema50)
 
-        ema30 = EMA(meta_params[14]//2, HA,1, (49+30,0+30,100+30))
+        ema30 = EMA(meta_params[14]//2, HA,0, (49+30,0+30,100+30))
         ema30.calculate()
         ema30.setWeight(meta_params[17])
         self.evaluateMACross(HA, ema30, ema50, window)
@@ -969,7 +1019,7 @@ class Strategy():
 
 
 
-        atr = ATR(14, candles,2, (49,0,100))
+        atr = ATR(14, candles,1, (49,0,100))
         atr.setWeight(meta_params[3])
         atr.calculate()
         #self.evaluateATR(candles, atr, window)
@@ -982,17 +1032,17 @@ class Strategy():
         evaluated["indicators"].append(rsi)
 
         # I SHOULD INCLUDE DIRECTION TOO? I MEAN AS FOR ADOSC?
-        macd = MACD(12, 26, 9,candles, 3, (49,0,100))
+        macd = MACD(12, 26, 9,candles, 1, (49,0,100))
         macd.setWeight(meta_params[7])
         macd.calculate()
         self.evaluateMACD(candles, macd, window)
         evaluated["indicators"].append(macd)
 
-        #adosc = ADOSC(3, 10, candles, 2, (49,0,100))
-        #adosc.setWeight(meta_params[9])
-        #adosc.calculate()
+        adosc = ADOSC(3, 10, candles, 2, (49,0,100))
+        adosc.setWeight(meta_params[9])
+        adosc.calculate()
         #self.evaluateADOSC(candles, adosc, window)
-        #evaluated["indicators"].append(adosc)
+        evaluated["indicators"].append(adosc)
 
         adx = ADX(14, candles, 3, (49,0,100))
         adx.setWeight(1)
@@ -1028,7 +1078,7 @@ class Strategy():
 
 
 
-def generateOCHLPicture(candles, indicators, p1, p2, _H = None, _W = None):
+def generateOCHLPicture(candles, indicators, p1, p2):
     #simple_log(candles)
     #simple_log(indicators)
     def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
@@ -1125,9 +1175,9 @@ def generateOCHLPicture(candles, indicators, p1, p2, _H = None, _W = None):
         drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1-val2,(i2+0.5)/depth,col,3)
 
         if v1.longEntry:
-            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,0,(i1+0.5)/depth,(0,180,0),1)
+            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,0,(i1+0.5)/depth,(0,180,0),2)
         if v1.shortEntry:
-            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1,(i1+0.5)/depth,(0,0,180),1)
+            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1,(i1+0.5)/depth,(0,0,180),2)
 
 
     def minMaxOfZone(candleSequences, indicatorSequences, p1, p2):
@@ -1161,32 +1211,39 @@ def generateOCHLPicture(candles, indicators, p1, p2, _H = None, _W = None):
         for v1, v2 in zip(indicator.values[:-1], indicator.values[1:]):
             drawIndicatorSegment(img, zone, v1, v2, minV, maxV, p1, p2, indicator.primaryColor)
 
-    depth = len(candles[0].candles[p1:p2])
+    def drawLineNet(img, lines_step, H, W):
+        line_interval = W//lines_step
+        for line_counter in range(0, line_interval, 1):
+            line_level = line_counter * lines_step
+            cv.line(img,(line_level, 0),(line_level, H),(75,75,75),1)
+
+
+
+    depth = len(candles[0].candles[p1:p2]) + 1
     simple_log(f"DRAWING {depth} candles")
 
-    H, W = 1500, 1100
-    if not _H is None:
-        H = _H
+    PIXELS_PER_CANDLE = 4
 
-    if not _W is None:
-        W = _W
+    H, W = 1500, depth * PIXELS_PER_CANDLE
 
     img = np.zeros((H,W,3), np.uint8)
 
     zones = []
-    firstSquare  = [H/7*1,  0,H/7*3, W-20]
-    drawSquareInZone(img, firstSquare, 0,0,0.95,0.95,(10,10,10))
+    firstSquare  = [H/7*0.1,  20,H/7*3.65, W-20]
+    drawSquareInZone(img, firstSquare, 0,0,1,1,(15,15,15))
     firstZone = []
     zones.append(firstSquare)
-    secondSquare = [H/7*4,0,H/7*5,   W-19]
-    drawSquareInZone(img, secondSquare, 0,0,0.95,0.95,(20,20,20))
+    secondSquare = [H/7*3.65-5,20,H/7*4,   W-20]
+    drawSquareInZone(img, secondSquare, 0,0,1,1,(40,40,40))
     zones.append(secondSquare)
-    thirdSquare = [H/7*5,0,H/7*6,   W-20]
-    drawSquareInZone(img, thirdSquare, 0,0,0.95,0.95,(30,30,30))
+    thirdSquare = [H/7*4-5,20,H/7*5.5,   W-20]
+    drawSquareInZone(img, thirdSquare, 0,0,1,1,(15,15,15))
     zones.append(thirdSquare)
-    forthSquare = [H/7*6,0,H,   W-20]
-    drawSquareInZone(img, forthSquare, 0,0,0.95,0.95,(40,40,40))
+    forthSquare = [H/7*5.5-5,20,H,   W-20]
+    drawSquareInZone(img, forthSquare, 0,0,1,1,(40,40,40))
     zones.append(forthSquare)
+
+    drawLineNet(img, 75, H, W)
 
     zoneDrawables = [{"zone" : _, "candles":[],"indicators":[], "min":0,"max":0} for _ in range(len(zones))]
 
@@ -1251,11 +1308,6 @@ class MarketStateMachine():
             self.bullishConfidence = 0
             self.bearishConfidence = 0
 
-        #if (self.current_state == "DOWNTREND" and new_state == "DIRTY") or (self.current_state == "UPTREND" and new_state == "DIRTY"):
-            #simple_log("HA NOT CLEAN", new_state)
-            #self.current_state = new_state
-            #return self.usual
-
 
         if self.bullishConfidence == 2 :
            return self.rising
@@ -1265,29 +1317,6 @@ class MarketStateMachine():
 
         else:
             return self.usual
-
-        #if  self.current_state == self.unknown:
-            #simple_log("SET INITIAL STATE OF ", new_state)
-            #self.current_state = new_state
-            #return self.usual
-
-        #elif self.current_state == new_state:
-            #simple_log("STATE DOES NOT CHANGED: ", new_state)
-            #return self.usual
-
-        #elif (self.current_state == "DOWNTREND" and new_state == "DIRTY") or (self.current_state == "UPTREND" and new_state == "DIRTY"):
-            #simple_log("HA NOT CLEAN", new_state)
-            #self.current_state = new_state
-            #return self.usual
-
-        #else:
-            #self.current_state = new_state
-            #if self.current_state == "DOWNTREND":
-                #simple_log("STATE CHANGED FROM INTRA TO DOWNTREND - FALLING")
-                #return self.falling
-            #else:
-                #simple_log("STATE CHANGED FROM INTRA TO UPTREND - RISING")
-                #return self.rising
 
 
 class EVALUATOR():
@@ -1332,6 +1361,11 @@ class EVALUATOR():
         #simple_log(f"PROFIT RATE {round(profitRate,3)}%")
         #totalRate = (4*winRate + 5*profitRate + 1*frequencyRate)/10
         totalRate = (4*winRate + 6*profitRate)/10
+
+        # CESIS TOXIC OPTIMIZATION PROCESSING
+        #if totalRate >= 90:
+            #totalRate = 75 - (totalRate - 90)
+
         #simple_log(f"AFTER ALL {self.clean_profits - self.clean_losses}")
         self.total = totalRate
         return winRate, profitRate, frequencyRate, totalRate
@@ -1366,15 +1400,17 @@ class EVALUATOR():
 
 
 
-    def generate_image(self, candles, indicators, p1, p2, directory, filename_special = None, _H = None, _W = None, draw_anyway = False):
+    def generate_image(self, candles, indicators, p1, p2,
+                       directory,
+                       filename_special = None, draw_anyway = False):
         filename = ""
         if filename_special is None:
-            filename = f"{self.token}.png"
+            filename = f"{self.token}.jpg"
         else:
             filename = filename_special
         path = os.path.join(directory, filename)
         if not VALIDATION_MODE or draw_anyway:
-            image = generateOCHLPicture(candles,indicators, p1, p2, _H, _W)
+            image = generateOCHLPicture(candles,indicators, p1, p2)
             #simple_log(directory)
             cv.imwrite(path,image)
         return path
@@ -1443,15 +1479,36 @@ class EVALUATOR():
                     numSL += 1 * self.scaleSynthetic(numPosesEx)
         return numPoses, numSL, numTP
 
-    def draw_image_ex(self, filename_special):
+    def prepare_directory(self, major):
+        expectedPath = os.path.join(os.getcwd(), "dataset0", major)
+        isExist = os.path.exists(expectedPath)
+
+        if not isExist:
+            os.makedirs(expectedPath)
+
+        return expectedPath
+
+    def validate_asset_name(self, asset):
+        if "_" not in asset:
+            raise Exception ("Asset name must follow notation MAJOR_MINOR_TWEEAKS_MODEN")
+
+    def parse_asset_name(self, asset):
+        self.validate_asset_name(asset)
+        major, *rest = asset.split("_")
+        basename = "_".join(rest)
+        return major, basename
+
+    def draw_image_ex(self, filename_postfix):
+
+        major, minor = self.parse_asset_name(TOKEN_NAME + "_" + TEST_CASE)
+        major_dir = self.prepare_directory(major)
+
         self.image_path = self.generate_image(self.evaluatedTMP["target"] + self.evaluatedTMP["candles"],
                                               self.evaluatedTMP["indicators"],
                                               MA_LAG,
                                               self.lastCandleTMP.index ,
-                                              directory = f"dataset{timeframe}",
-                                              filename_special = filename_special,
-                                              _H = 2000,
-                                              _W = 4000,
+                                              directory = major_dir,
+                                              filename_special = minor + "_" + filename_postfix + ".jpg",
                                               draw_anyway = True)
 
 
@@ -1540,7 +1597,7 @@ class MarketProcessingPayload(Payload):
 
         if len(self.indexesInWork) == 0:
             self.indexesInWork = [_ for _ in range(META_SIZE)]
-            random.shuffle(self.indexesInWork)
+            RANDOM.shuffle(self.indexesInWork)
 
         return self.indexesInWork.pop()
 
@@ -1552,7 +1609,7 @@ class MarketProcessingPayload(Payload):
         # OPTIMIZATION PRIOR TO
         # PREVIOUS 100
 
-        optimization_level = random.randint(0,  2)
+        optimization_level = RANDOM.randint(0,  2)
 
         if optimization_level >= 0:
             random_meta1 = self.get_random_meta_idx()
@@ -1647,7 +1704,6 @@ class MarketProcessingPayload(Payload):
     def fetch_market_data(self, feedback = None):
 
         HOST = "127.0.0.1"
-        ***REMOVED***
         data = {}
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((HOST, PORT))
@@ -1698,13 +1754,16 @@ class MarketProcessingPayload(Payload):
             simple_log(f"### TR = {round(self.last_tr,2)}, NP = {self.evaluator.poses} , DELTA = {round(self.evaluator.clean_profits - self.evaluator.clean_losses,3)} /// {market_situation}", log_level=5)
             simple_log(f"{meta_params}", log_level=5)
 
-            if self.last_tr > self.best_perfomance:
-                self.best_perfomance = self.last_tr
-                self.evaluator.draw_image_ex(filename_special = f"{self.token}_BEST_CASE.png")
+            if self.last_tr == 100:
+                self.evaluator.draw_image_ex(filename_postfix = f"TOXIC_CASE")
 
-            if self.last_tr < self.worst_perfomance:
+            elif self.last_tr > self.best_perfomance:
+                self.best_perfomance = self.last_tr
+                self.evaluator.draw_image_ex(filename_postfix = f"BEST_CASE")
+
+            elif self.last_tr < self.worst_perfomance and self.last_tr > 0:
                 self.worst_perfomance = self.last_tr
-                self.evaluator.draw_image_ex(filename_special = f"{self.token}_WORST_CASE.png")
+                self.evaluator.draw_image_ex(filename_postfix = f"WORST_CASE")
 
 
             #if(market_situation == "USUAL" or self.last_tr < 70):
@@ -1839,9 +1898,35 @@ if __name__ == '__main__':
         VALIDATION_MODE = False
 
     if len (sys.argv) > 3:
-        LOG_TOLERANCE = int(sys.argv[3])
+        RANDOM_MODE = sys.argv[3]
 
-    random.seed(time.time())
+        if RANDOM_MODE == "R":
+            TEST_CASE = RANDOM_MODE
+            print("RANDOM MODE")
+            SEED = time.time()
+        elif RANDOM_MODE == "ORCHID":
+            TEST_CASE = RANDOM_MODE
+            SEED = 62192
+            print(f"FIXED TEST: {RANDOM_MODE} || {SEED}")
+        elif RANDOM_MODE == "AKMENS":
+            TEST_CASE = RANDOM_MODE
+            SEED = 5951624
+            print(f"FIXED TEST: {RANDOM_MODE} || {SEED}")
+        elif RANDOM_MODE == "BLAKE":
+            TEST_CASE = RANDOM_MODE
+            SEED = 595162405
+            print(f"FIXED TEST: {RANDOM_MODE} || {SEED}")
+
+        else:
+            raise Exception("Random or fixed mod needs to be specified")
+
+    RANDOM = RandomMachine(SEED)
+
+    if len(sys.argv) >4:
+        PORT = int(sys.argv[4])
+    else:
+        ***REMOVED***
+
 
     log.startLogging(sys.stdout)
 

@@ -10,10 +10,12 @@
 import random
 import cv2 as cv
 import numpy as np
+***REMOVED***
 
 ***REMOVED***
-WINDOW_SIZE = 800
-MAX_DEPTH = 1000
+WINDOW_SIZE = 1000
+MAX_DEPTH = 1
+RANDOM_MODE = "R"
 ***REMOVED***
 
 ***REMOVED***
@@ -134,10 +136,17 @@ def generateOCHLPicture(candles, _H = None, _W = None):
         for candle in candles[:]:
             drawCandle(img, zone, candle, minV, maxV, p1, p2)
 
+    def drawLineNet(img, lines_step, H, W):
+        line_interval = W//lines_step
+        for line_counter in range(0, line_interval, 1):
+            line_level = line_counter * lines_step
+            cv.line(img,(line_level, 0),(line_level, H),(150,150,150),1)
+
 
     depth = len(candles) + 1
+    PIXELS_PER_CANDLE = 5
 
-    H, W = 1080,1920
+    H, W = 1080,PIXELS_PER_CANDLE * depth
     if not _H is None:
         H = _H
 
@@ -150,6 +159,8 @@ def generateOCHLPicture(candles, _H = None, _W = None):
     drawSquareInZone(img, firstSquare, 0,0,1,1,(10,10,10))
     p1 = candles[0].index
     p2 = candles[-1].index
+
+    drawLineNet(img, 75, H, W)
 
     minV, maxV = minMaxOfZone(candles)
     drawCandles(img, candles, firstSquare,  minV, maxV, p1, p2)
@@ -240,23 +251,32 @@ def validateFeedback(feedback, O, C, H, L):
     return total, minDelta, maxDelta, minus, plus, cleanLosses, cleanProfit
 
 def dump_stats(total, minDelta, maxDelta, minus, plus, minusAbs, plusAbs, asset):
+    major, minor = parse_asset_name(asset)
+
     print("---"*5)
-    print("TEST CASE: ", asset)
-    print("TOTAL: ", total)
-    print("WORST LOSS: ", minDelta)
-    print("BEST PROFIT: ", maxDelta)
-    print("LOSS POSES: ", minus)
-    print("PROFIT POSES: ", plus)
-    print("TOTAL LOSSES: ", minusAbs)
-    print("TOTAL PROFIT: ", plusAbs)
+    print(f"{major} CLASS ALGORITHM")
+    print("---"*5)
+    print(f"VARIATION_TEST_DEPTH {minor}")
+    print("TOTAL......... ", total)
+    print("WORST LOSS.... ", minDelta)
+    print("BEST PROFIT... ", maxDelta)
+    print("LOSS POSES.... ", minus)
+    print("PROFIT POSES.. ", plus)
+    print("TOTAL LOSSES.. ", minusAbs)
+    print("TOTAL PROFIT.. ", plusAbs)
+
     WR = plus / (minus + plus) if (minus + plus) > 0 else 0
     PR = plusAbs / (plusAbs + abs(minusAbs)) if (plusAbs + abs(minusAbs)) > 0 else 0
     TR = (WR + PR) / 2
-    print("WR: ", round(WR*100,5))
-    print("PR: ", round(PR*100,5))
-    print("TR: ", round(TR*100,5))
+
+    print("WR.............", round(WR*100,5))
+    print("PR.............", round(PR*100,5))
+    print("TR.............", round(TR*100,5))
     print("---"*5)
-    with open(os.path.join(os.getcwd(), "dataset0", f"{asset}.csv"), "w") as logfile:
+
+    major_dir = prepare_directory(major)
+
+    with open(os.path.join(major_dir, f"{minor}_TR{int(TR)}.csv"), "w") as logfile:
         logfile.write(f"TOTAL,{total}\n")
         logfile.write(f"WORST,{minDelta}\n")
         logfile.write(f"BEST,{maxDelta}\n")
@@ -268,15 +288,66 @@ def dump_stats(total, minDelta, maxDelta, minus, plus, minusAbs, plusAbs, asset)
         logfile.write(f"PR,{PR*100}\n")
         logfile.write(f"TR,{TR*100}\n")
 
+def prepare_directory(major):
+    expectedPath = os.path.join(os.getcwd(), "dataset0", major)
+    isExist = os.path.exists(expectedPath)
+
+    if not isExist:
+        os.makedirs(expectedPath)
+
+    return expectedPath
+
+def validate_asset_name(asset):
+    if "_" not in asset:
+        raise Exception ("Asset name must follow notation MAJOR_MINOR_TWEEAKS_MODEN")
+
+def parse_asset_name(asset):
+    validate_asset_name(asset)
+    major, *rest = asset.split("_")
+    basename = "_".join(rest)
+    return major, basename
+
 
 feedbackCollector = {}
 
+print("For validator:")
+print("<R:random/F:fixed> <(int): test depth> [(int): port number]")
+print("For evaluator:")
+print("<(str): MAJOR_BUILD> [_(str) MINOR_BUILD]?[_(str) TWEAKS_CHAIN]* <V: validation> <R: ranodm/F: fixed> [(int): port number]")
+
+RANDOM_MODE = sys.argv[1]
+if RANDOM_MODE == "R":
+    print("RANDOM MODE")
+    SEED = time.time()
+elif RANDOM_MODE == "ORCHID":
+    SEED = 62192
+    print(f"FIXED TEST: {RANDOM_MODE} || {SEED}")
+elif RANDOM_MODE == "AKMENS":
+    SEED = 5951624
+    print(f"FIXED TEST: {RANDOM_MODE} || {SEED}")
+elif RANDOM_MODE == "BLAKE":
+    SEED = 595162405
+    print(f"FIXED TEST: {RANDOM_MODE} || {SEED}")
+else:
+    raise Exception("Random or fixed mod needs to be specified")
+random.seed(SEED)
+
+TRN = sys.argv[2]
+MAX_DEPTH = int(TRN)
+
+if len(sys.argv) >3:
+    PORT = int(sys.argv[3])
+else:
+    ***REMOVED***
 
 first_index = lambda _ : _
 last_index = lambda _ : _ + WINDOW_SIZE
 previous_last_index = lambda _ : _ + WINDOW_SIZE - 1
 # TODO do it asset by asset
 s = initialize_socket()
+
+
+
 ***REMOVED***
 
     O, C, H, L, V = processAsset()
@@ -285,6 +356,7 @@ s = initialize_socket()
     test_start = random.randint(0, len(O) - WINDOW_SIZE - MAX_DEPTH)
     #test_start = 70000
     sliding_window_index = test_start
+    print(f"DATASET INDEX {sliding_window_index}")
 
     results_obtained = {}
     asset = "UNLABELED_TEST"
@@ -335,6 +407,7 @@ s = initialize_socket()
 ***REMOVED***
 ***REMOVED***
 
+    asset = asset + "_" + RANDOM_MODE + "_" + "D" + str(MAX_DEPTH)
     result, worstCase, bestCase, minus, plus, cleanLosses, cleanProfit = validateFeedback(feedbackCollector, O, C, H, L)
     dump_stats(result, worstCase, bestCase, minus, plus, cleanLosses, cleanProfit, asset)
 
@@ -351,7 +424,15 @@ s = initialize_socket()
                                     index = last_candle))
 
     image = generateOCHLPicture(candles)
-    imagepath = os.path.join(os.getcwd(), "dataset0", f"{asset}.png")
+
+    major, minor = parse_asset_name(asset)
+    major_dir = prepare_directory(major)
+
+    WR = plus / (minus + plus) if (minus + plus) > 0 else 0
+    PR = cleanProfit / (cleanProfit + abs(cleanLosses)) if (cleanProfit + abs(cleanLosses)) > 0 else 0
+    TR = (WR + PR) / 2
+
+    imagepath = os.path.join(major_dir, f"{minor}_TR{int(TR)}.jpg")
     cv.imwrite(imagepath,image)
 
     feedbackCollector = {}
