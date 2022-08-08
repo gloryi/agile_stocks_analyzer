@@ -12,6 +12,7 @@ from talib import RSI as talibRSI
 from talib import MFI
 from talib import MACD as talibMACD
 from talib import KAMA as talibKAMA
+from talib import MA as talibMA
 from talib import CORREL as talibCORREL
 from collections import namedtuple
 import cv2 as cv
@@ -281,9 +282,13 @@ class MovingAverage(Indicator):
         super().__init__(*args, **kw)
 
     def calculate(self):
+        arrClose = []
+        for index in range(0, len(self.candleSequence.candles)):
+            arrClose.append(self.candleSequence.candles[index].c)
+        arrClose = np.asarray(arrClose)
+        arrMA = talibMA(arrClose, self.period)
         for index in range(self.period, len(self.candleSequence.candles)):
-            average = sum([_.c for _ in self.candleSequence.ofRange(index-self.period, index)])/self.period
-            self.values.append(IndicatorValue(average, index))
+            self.values.append(IndicatorValue( arrMA[index], index))
 
 class KAMA(Indicator):
     def __init__(self, period, *args, **kw):
