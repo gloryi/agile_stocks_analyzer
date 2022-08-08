@@ -363,6 +363,8 @@ s = initialize_socket()
     candles = []
 
 
+    # ERROR - Instead of MAX_DEPTH i'm iterating WINDOW + MAX_DEPTH
+    # Means 1000 + ...
     while last_index(sliding_window_index) < min(len(O), test_start + WINDOW_SIZE + MAX_DEPTH):
 
         conn, addr = s.accept()

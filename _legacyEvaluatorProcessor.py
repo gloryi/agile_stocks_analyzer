@@ -258,10 +258,14 @@ class Indicator():
     def setWeight(self, weight):
         self.weight = weight
 
+    def _toArrayIndex(self, index):
+        return index - self.values[0].index
+
     def ofIdx(self, idx):
-        for value in self.values:
-            if value.index == idx:
-                return value
+        #for value in self.values:
+            #if value.index == idx:
+                #return value
+        return  self.values[self._toArrayIndex(idx)]
 
     def maxV(self, p1, p2):
         return max(_.value for _ in filter(lambda _ : _.index >=p1 and _.index<=p2, self.values))
