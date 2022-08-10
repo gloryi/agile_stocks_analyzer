@@ -263,9 +263,6 @@ class Indicator():
         return index - self.values[0].index
 
     def ofIdx(self, idx):
-        #for value in self.values:
-            #if value.index == idx:
-                #return value
         return  self.values[self._toArrayIndex(idx)]
 
     def maxV(self, p1, p2):
@@ -1191,7 +1188,7 @@ class MarketProcessingPayload(Payload):
 
     def prepare_feedback(self):
         if not self.lastSL is None and not self.lastTP is None:
-            return {"SL": self.lastSL, "TP": self.lastTP}
+            return {"SL": self.lastSL, "TP": self.lastTP, "printable_metadata":self.last_tr}
         else:
             return None
 

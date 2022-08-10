@@ -230,6 +230,9 @@ def validateFeedback(feedback, O, C, H, L):
     minus = 0
     cleanLosses = 0
     cleanProfit = 0
+    header = ""
+    lines = []
+
     for index in feedback:
         sltp = feedback[index]
         closePrice = C[index]
@@ -244,11 +247,39 @@ def validateFeedback(feedback, O, C, H, L):
             sltp["ENTRY"].profit = True
             plus +=1
             cleanProfit += abs(hitPrice)
+        if "printable_metadata" in sltp:
+            if header == "":
+                header = ",".join(list(sltp["printable_metadata"])) + ",CLOSED"
+
+            lines.append([])
+            for param in sltp["printable_metadata"]:
+                lines[-1].append(sltp["printable_metadata"][param])
+            lines[-1].append(hitPrice)
+
+            #print(">>> ", sltp["printable_metadata"])
+            #print("<<< ", hitPrice)
+            #print()
         # CLOSEST LEVEL INSTEAD OF CLOSE PRICE
         minDelta = min(hitPrice, minDelta)
         maxDelta = max(hitPrice, maxDelta)
         total += hitPrice
-    return total, minDelta, maxDelta, minus, plus, cleanLosses, cleanProfit
+
+        #print(header)
+        #for line in lines:
+            #print(line)
+
+
+    return total, minDelta, maxDelta, minus, plus, cleanLosses, cleanProfit, header, lines
+
+def dump_case(header, lines, asset):
+    major, minor = parse_asset_name(asset)
+
+    major_dir = prepare_directory(major)
+
+    with open(os.path.join(major_dir, f"STATS_{minor}.csv"), "w") as statsfile:
+        statsfile.write(header+"\n")
+        for line in lines:
+            statsfile.write(",".join(str(_) for _ in line)+"\n")
 
 def dump_stats(total, minDelta, maxDelta, minus, plus, minusAbs, plusAbs, asset):
     major, minor = parse_asset_name(asset)
@@ -368,9 +399,10 @@ s = initialize_socket()
     while last_index(sliding_window_index) < min(len(O), test_start + WINDOW_SIZE + MAX_DEPTH):
 
         conn, addr = s.accept()
+        data = conn.recv(10000)
 ***REMOVED***
 ***REMOVED***
-***REMOVED***
+        #print(rawAsset)
 ***REMOVED***
         asset = assetData["asset"]
 
@@ -410,8 +442,9 @@ s = initialize_socket()
 ***REMOVED***
 
     asset = asset + "_" + RANDOM_MODE + "_" + "D" + str(MAX_DEPTH)
-    result, worstCase, bestCase, minus, plus, cleanLosses, cleanProfit = validateFeedback(feedbackCollector, O, C, H, L)
+    result, worstCase, bestCase, minus, plus, cleanLosses, cleanProfit, header, lines = validateFeedback(feedbackCollector, O, C, H, L)
     dump_stats(result, worstCase, bestCase, minus, plus, cleanLosses, cleanProfit, asset)
+    dump_case(header, lines, asset)
 
     extraLen = max(candles, key = lambda _ : _.sltpLine).sltpLine
 

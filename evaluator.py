@@ -13,6 +13,7 @@ from talib import MFI
 from talib import MACD as talibMACD
 from talib import KAMA as talibKAMA
 from talib import CORREL as talibCORREL
+from talib import MA as talibMA
 from collections import namedtuple
 import cv2 as cv
 import numpy as np
@@ -191,10 +192,11 @@ class Indicator():
     def setWeight(self, weight):
         self.weight = weight
 
+    def _toArrayIndex(self, index):
+        return index - self.values[0].index
+
     def ofIdx(self, idx):
-        for value in self.values:
-            if value.index == idx:
-                return value
+        return  self.values[self._toArrayIndex(idx)]
 
     def maxV(self, p1, p2):
         return max(_.value for _ in filter(lambda _ : _.index >=p1 and _.index<=p2, self.values))
@@ -210,9 +212,13 @@ class MovingAverage(Indicator):
         super().__init__(*args, **kw)
 
     def calculate(self):
+        arrClose = []
+        for index in range(0, len(self.candleSequence.candles)):
+            arrClose.append(self.candleSequence.candles[index].c)
+        arrClose = np.asarray(arrClose)
+        arrMA = talibMA(arrClose, self.period)
         for index in range(self.period, len(self.candleSequence.candles)):
-            average = sum([_.c for _ in self.candleSequence.ofRange(index-self.period, index)])/self.period
-            self.values.append(IndicatorValue(average, index))
+            self.values.append(IndicatorValue( arrMA[index], index))
 
 
 class KAMA(Indicator):
@@ -979,7 +985,7 @@ class MarketProcessingPayload(Payload):
 
 
     def evaluate(self):
-        for asset in tqdm(self.assetsList[:5]):
+        for asset in tqdm(self.assetsList):
         #for asset in tqdm(self.assetsList):
             bestWinRate = 0
             self.token = asset["asset"]
@@ -1052,10 +1058,10 @@ def tweakMetaParams():
         for w2 in [1,2]:
             for w3 in [1,2]:
                 for w4 in [1,2]:
-                    for tpsl in [1]:
-                        for w6 in [1]:
-                            for w7 in [1]:
-                                for w8 in [1]:
+                    for tpsl in [1,2]:
+                        for w6 in [1,2]:
+                            for w7 in [1,2]:
+                                for w8 in [1,2]:
                                     for tp in range(2,7):
                                         for sl in range(1,tp):
                                             metaParam1 = w1

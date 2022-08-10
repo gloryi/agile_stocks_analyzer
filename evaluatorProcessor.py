@@ -42,6 +42,48 @@ META_SIZE = 18
 ***REMOVED***
 ***REMOVED***
 
+# TODO Create state machine for handling global variables
+
+class Event():
+    def __init__(self, ID, decision_model, threshold, actual_value):
+        self.ID = ID
+        self.threshold = threshold
+        self.actual_value = actual_value
+        self.delta = self.actual_value - self.threshold
+        self.decision_model = decision_model
+
+class Superviser():
+    def __init__(self):
+        self.actual_records = []
+
+    def register_decision(self):
+        # ID of emitting-filtering chain node
+        # Some ... global flag to ignore all virtual staff
+        # Unique event type
+        # Emitting signal of threshold, actual - delta - decision "Bullish" "Bearish", "Bad"
+        # Filtering - every if. ID threshold - actual value - delta
+        #
+        # TYPE, ID, threshold, actual value, delta
+        # How to calculate rejection rate?
+        # Decision types must be formalized and treated the same way
+        pass
+
+# As far as i wanted to sllep it whould be another global variable
+
+SIGNALS_LOG = []
+RECORD_STATS = True
+
+def create_stats_record(label, value):
+    global RECORD_STATS
+    global SIGNALS_LOG
+    if RECORD_STATS:
+        SIGNALS_LOG[label] = value
+
+def clear_stats_records():
+    global RECORD_STATS
+    global SIGNALS_LOG
+    SIGNALS_LOG =  {}
+
 class RandomMachine():
     def __init__(self, initial_seed, keys_depth = 100):
         random.seed(initial_seed)
@@ -309,6 +351,11 @@ class CandleSequence():
     def minL(self, p1, p2):
         return min(_.l for _ in filter(lambda _ : _.index >=p1 and _.index<=p2, self.candles))
 
+    def calculate_acceptance_rate(self):
+        signals_emmited = len(list(filter(lambda val: val.bearish or val.bullish, (_ for _ in self.candles) )))
+        signals_accepted = len(list(filter(lambda val: val.longEntry or val.shortEntry,(_ for _ in self.candles) )))
+        return signals_emmited/(signals_emmited+signals_accepted) if (signals_emmited + signals_accepted) > 0 else 0
+
     def append(self, value):
         self.candles.append(value)
 
@@ -401,9 +448,6 @@ class Indicator():
 
 
     def ofIdx(self, idx):
-        #for value in self.values:
-            #if value.index == idx:
-                #return value
         return self.values[self._toArrayIndex(idx)]
 
     def maxV(self, p1, p2):
@@ -414,6 +458,11 @@ class Indicator():
 
     def average(self, p1, p2):
         return sum(_.value for _ in self.values[self._toArrayIndex(p1): self._toArrayIndex(p1)])/(p2-p1)
+
+    def calculate_acceptance_rate(self):
+        signals_emmited = len(list(filter(lambda val: val.bearish or val.bullish, (_ for _ in self.values) )))
+        signals_accepted = len(list(filter(lambda val: val.longEntry or val.shortEntry, (_ for _ in self.values) )))
+        return signals_emmited/(signals_emmited+signals_accepted) if (signals_emmited + signals_accepted) > 0 else 0
 
 class MovingAverage(Indicator):
     def __init__(self, period, *args, **kw):
@@ -900,6 +949,10 @@ class Strategy():
 
         stateMachine = MarketStateMachine()
 
+        emitted_entries = 0
+        accepted_by_confluence = 0
+        accepted_by_confidence = 0
+
         for index in range(window.start, window.stop):
             bullishPoints = 0
             bearishPoints = 0
@@ -928,6 +981,9 @@ class Strategy():
 
             newState = "USUAL"
             currentBalacne = bullishPoints - bearishPoints
+            if currentBalacne !=0:
+                emitted_entries += 1
+
 
             self.balanceCummulative.append(currentBalacne)
             self.powerCummulative.append(bullishPoints + bearishPoints)
@@ -944,13 +1000,16 @@ class Strategy():
             elif marketState > 0.7 and currentBalacne > avgBalance:
                 evaluated["target"][0].candles[index].markBullish()
                 newState = stateMachine.are_new_state_signal("UPTREND")
+                accepted_by_confluence +=1
             elif marketState < -0.7 and currentBalacne < avgBalance:
                 evaluated["target"][0].candles[index].markBearish()
                 newState = stateMachine.are_new_state_signal("DOWNTREND")
+                accepted_by_confluence +=1
             else:
                 newState = stateMachine.are_new_state_signal("DIRTY")
 
             if newState == "RISING":
+                accepted_by_confidence += 1
                 evaluated["target"][0].candles[index].goLong()
                 for indicatorSequence in evaluated["indicators"]:
                     value = indicatorSequence.ofIdx(index)
@@ -958,11 +1017,18 @@ class Strategy():
                         value.longEntry = True
 
             elif newState == "FALLING":
+                accepted_by_confidence += 1
                 evaluated["target"][0].candles[index].goShort()
                 for indicatorSequence in evaluated["indicators"]:
                     value = indicatorSequence.ofIdx(index)
                     if value.bearish:
                         value.shortEntry = True
+
+        create_stats_record("STRATEGY_EMMITED", emitted_entries)
+        create_stats_record("STRATEGY_CONFLUENCE_FILTERED", accepted_by_confluence)
+        create_stats_record("STRATEGY_CONFIDENCE_FILTERED", accepted_by_confidence)
+        create_stats_record("STRATEGY_CONFLUENCE_ACCEPTANCE_RATE", accepted_by_confluence/emitted_entries if emitted_entries >0 else 0)
+        create_stats_record("STRATEGY_CONFIDENCE_FILTERED", accepted_by_confidence/accepted_by_confluence if accepted_by_confluence > 0 else 0)
 
 
 
@@ -979,58 +1045,75 @@ class Strategy():
         lastCandle = len(candles)
         window = slice(MA_LAG, lastCandle)
 
+        create_stats_record("HA_WEIGHT", meta_params[0])
         self.evaluateHA(HA, window)
         HA.setWeight(meta_params[0])
         evaluated["candles"].append(HA)
 
+        create_stats_record("BOILINGER_WEIGHT", meta_params[15])
         self.evaluateBoilinger(BOILINGER, candles, window)
         BOILINGER.setWeight(meta_params[15])
         evaluated["candles"].append(BOILINGER)
 
+        create_stats_record("SLOW_MA_PERIOD", meta_params[13])
+        create_stats_record("SLOW_MA_WEIGHT", meta_params[14])
         ma200 = MovingAverage(meta_params[13],candles,0, (49,0,100))
         ma200.setWeight(meta_params[1])
         ma200.calculate()
         self.evaluateMA(candles, ma200, window)
         evaluated["indicators"].append(ma200)
 
+        create_stats_record("FAST_MA_PERIOD", meta_params[10])
+        create_stats_record("FASTS_SLOW_MA_CROSS_WEIGHT", meta_params[2])
         ma50 = MovingAverage(meta_params[10], candles,0, (49+30,10+30,10+30))
         ma50.setWeight(meta_params[2])
         ma50.calculate()
         self.evaluateMACross(candles, ma50, ma200, window)
         evaluated["indicators"].append(ma50)
 
+
+        create_stats_record("KAMA_PERIOD", meta_params[14]*2)
+        create_stats_record("KAMA_WEIGHT", meta_params[8])
         kama = KAMA(meta_params[14]*2, HA,0, (49+30,0+30,100+30))
         kama.calculate()
         kama.setWeight(meta_params[8])
         #self.evaluateMA(HA, kama, window)
         evaluated["indicators"].append(kama)
 
+
+        create_stats_record("EMA50_PERIOD", meta_params[14])
+        create_stats_record("EMA50_WEIGHT", meta_params[17])
         ema50 = EMA(meta_params[14], HA,0, (49+30,0+30,100+30))
         ema50.calculate()
         ema50.setWeight(meta_params[17])
         #self.evaluateMA(HA, ema50, window)
         evaluated["indicators"].append(ema50)
 
+        create_stats_record("EMA30_PERIOD", meta_params[14])
+        create_stats_record("EMA30_WEIGHT", meta_params[17])
         ema30 = EMA(meta_params[14]//2, HA,0, (49+30,0+30,100+30))
         ema30.calculate()
         ema30.setWeight(meta_params[17])
         self.evaluateMACross(HA, ema30, ema50, window)
         evaluated["indicators"].append(ema30)
 
-
-
+        create_stats_record("ATR_PERIOD", 14)
+        create_stats_record("ATR_WEIGHT", meta_params[3])
         atr = ATR(14, candles,1, (49,0,100))
         atr.setWeight(meta_params[3])
         atr.calculate()
         #self.evaluateATR(candles, atr, window)
         evaluated["indicators"].append(atr)
 
+        create_stats_record("RSI_PERIOD", meta_params[11])
+        create_stats_record("RSI_WEIGHT", meta_params[6])
         rsi = RSI(meta_params[11],candles,3, (49,0,100))
         rsi.setWeight(meta_params[6])
         rsi.calculate()
         #self.evaluateRSI(candles, rsi, window)
         evaluated["indicators"].append(rsi)
 
+        create_stats_record("MACD_WEIGHT", meta_params[7])
         # I SHOULD INCLUDE DIRECTION TOO? I MEAN AS FOR ADOSC?
         macd = MACD(12, 26, 9,candles, 1, (49,0,100))
         macd.setWeight(meta_params[7])
@@ -1038,6 +1121,7 @@ class Strategy():
         self.evaluateMACD(candles, macd, window)
         evaluated["indicators"].append(macd)
 
+        create_stats_record("ADOSC_WEIGHT", meta_params[9])
         adosc = ADOSC(3, 10, candles, 2, (49,0,100))
         adosc.setWeight(meta_params[9])
         adosc.calculate()
@@ -1050,6 +1134,7 @@ class Strategy():
         self.evaluateADX(candles, adx, window)
         evaluated["indicators"].append(adx)
 
+        create_stats_record("PLUSDI_MINUSDI_WEIGHT", meta_params[17])
         plus_di = PLUS_DI(14, candles, 3, (49,0,100))
         plus_di.setWeight(meta_params[17])
         plus_di.calculate()
@@ -1066,6 +1151,7 @@ class Strategy():
         #self.evaluateCorrel(candles, correl, window)
         #evaluated["indicators"].append(correl)
 
+        create_stats_record("VOLUME_WEIGHT", meta_params[9])
         volume = VOLUME(candles, 2, (49,0,100))
         volume.setWeight(meta_params[9])
         volume.calculate()
@@ -1357,10 +1443,15 @@ class EVALUATOR():
         #frequencyActual = (self.poses / self.bars) if self.bars > 0 else 0
         # TODO justify this constant somehow
         #frequencyDemanded = 15 / self.bars
-        frequencyRate = (1 - (abs(self.poses - 10) / 10))*100
+        frequencyRate = (1 - (abs(self.poses - 100) / 100))*100
         #simple_log(f"PROFIT RATE {round(profitRate,3)}%")
         #totalRate = (4*winRate + 5*profitRate + 1*frequencyRate)/10
         totalRate = (4*winRate + 6*profitRate)/10
+
+        create_stats_record("WIN_RATE", winRate)
+        create_stats_record("FREQUENCY_RATE", frequencyRate)
+        create_stats_record("TOTAL_RATE", totalRate)
+        create_stats_record("PROFIT_RATE", profitRate)
 
         # CESIS TOXIC OPTIMIZATION PROCESSING
         #if totalRate >= 90:
@@ -1371,7 +1462,6 @@ class EVALUATOR():
         return winRate, profitRate, frequencyRate, totalRate
 
     def calculateSLTP(self, targetCandle, atr):
-
         atrValue = atr.ofIdx(targetCandle.index).value
         sl, tp = targetCandle.c, targetCandle.c
         if targetCandle.bullish:
@@ -1387,6 +1477,8 @@ class EVALUATOR():
     def generateStats(self, lastCandle, atr):
         winRate, profitRate, frequencyRate, totalRate = self.calculateRate()
 
+        create_stats_record("SL_LEVEL", meta_params[4][0])
+        create_stats_record("TP_LEVEL", meta_params[4][1])
         self.sl_last, self.tp_last = self.calculateSLTP(lastCandle, atr)
 
         # division by 100 related to bug of forex prices
@@ -1511,6 +1603,42 @@ class EVALUATOR():
                                               filename_special = minor + "_" + filename_postfix + ".jpg",
                                               draw_anyway = True)
 
+    def supervize_evaluated(self, evaluated):
+        last_candle = evaluated["target"][0].candles[-1]
+        last_candle_index = last_candle.index
+        last_candle_bearish = last_candle.bearish
+        last_candle_bullish = last_candle.bullish
+
+        for signalingCandles in evaluated["candles"]:
+            candle_of_interest = signalingCandles.ofIdx(last_candle_index)
+            sequence_name = str(signalingCandles.__class__)
+            if last_candle_bearish and candle_of_interest.bearish or last_candle_bullish and candle_of_interest.bullish:
+                create_stats_record(sequence_name + "_CONFLUENT", 1)
+                create_stats_record(sequence_name + "_DIVERGENT", 0)
+            elif last_candle_bearish and candle_of_interest.bullish or last_candle_bullish and candle_of_interest.bearish:
+                create_stats_record(sequence_name + "_CONFLUENT", 0)
+                create_stats_record(sequence_name + "_DIVERGENT", 1)
+            else:
+                create_stats_record(sequence_name + "_CONFLUENT", 0)
+                create_stats_record(sequence_name + "_DIVERGENT", 0)
+
+            create_stats_record(sequence_name + "_ACCEPTANCE_RATE", signalingCandles.calculate_acceptance_rate())
+
+        for signalingIndicator in evaluated["indicators"]:
+            signaling_value = signalingIndicator.ofIdx(last_candle_index)
+            sequence_name = str(signalingIndicator.__class__)
+            if last_candle_bearish and signaling_value.bearish or last_candle_bullish and signaling_value.bullish:
+                create_stats_record(sequence_name + "_CONFLUENT", 1)
+                create_stats_record(sequence_name + "_DIVERGENT", 0)
+            elif last_candle_bearish and signaling_value.bullish or last_candle_bullish and signaling_value.bearish:
+                create_stats_record(sequence_name + "_CONFLUENT", 0)
+                create_stats_record(sequence_name + "_DIVERGENT", 1)
+            else:
+                create_stats_record(sequence_name + "_CONFLUENT", 0)
+                create_stats_record(sequence_name + "_DIVERGENT", 0)
+            create_stats_record(sequence_name + "_ACCEPTANCE_RATE", signalingIndicator.calculate_acceptance_rate())
+
+
 
     def evaluate(self, O,C,H,L,V):
 
@@ -1566,6 +1694,9 @@ class EVALUATOR():
             self.generatedStats = self.generateStats(lastCandle, atr)
             if self.draw and signal_type != "USUAL":
                 self.image_path = self.generate_image(evaluated["target"] +evaluated["candles"],evaluated["indicators"],lastCandle.index -100,lastCandle.index ,directory = f"dataset{timeframe}")
+
+            if signal_type != "USUAL":
+                self.supervize_evaluated(evaluated)
 
             return signal_type
 
@@ -1720,15 +1851,17 @@ class MarketProcessingPayload(Payload):
     def prepare_feedback(self):
         simple_log("VVV ", self.last_sl, self.last_tp, log_level=1)
         if not self.last_sl is None and not self.last_tp is None:
-            return {"SL": self.last_sl, "TP": self.last_tp}
+            return {"SL": self.last_sl, "TP": self.last_tp, "printable_metadata": SIGNALS_LOG}
         else:
             return None
 
     def dump_stats(self):
         self.last_sl = None
         self.last_tp = None
+        clear_stats_records()
 
     def wait_for_event(self):
+        global RECORD_STATS
         message = ""
         # Kind of cooldown on node side
 
@@ -1739,9 +1872,12 @@ class MarketProcessingPayload(Payload):
             O, C, H, L, V = self.fetch_market_data(self.prepare_feedback())
 
             self.dump_stats()
+            RECORD_STATS = True
             market_situation = self.evaluator.evaluate(O, C,
                                                        H, L,
                                                        V)
+            RECORD_STATS = False
+
             self.tweak_minor(O, C, H, L, V)
 
 
