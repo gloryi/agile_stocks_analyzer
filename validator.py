@@ -12,24 +12,18 @@ import cv2 as cv
 import numpy as np
 ***REMOVED***
 
+#====================================================>
+#=========== VALIDATOR SETTINGS
+#====================================================>
+
 ***REMOVED***
 WINDOW_SIZE = 1000
 MAX_DEPTH = 1
 RANDOM_MODE = "R"
-***REMOVED***
 
-***REMOVED***
-
-***REMOVED***
-
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-
-***REMOVED***
+#====================================================>
+#===========  DRAWING AND DATA MODEL
+#====================================================>
 
 class simpleCandle():
     def __init__(self, o, c, h, l, sl = None, tp = None, sltshift = None, index = 0):
@@ -113,7 +107,7 @@ def generateOCHLPicture(candles, _H = None, _W = None):
             if not candle.profit is None:
                 hitInd = candle.sltpLine
                 drawSquareInZone(img, zone, 1-tpline-0.005,(i+0.5)/depth,1-tpline+0.005,(i+hitInd-0.5)/depth,(180-10,58-10,59-10))
-#
+
             if not candle.stop is None:
                 hitInd = candle.sltpLine
                 drawSquareInZone(img, zone, 1-slline-0.005,(i+0.5)/depth,1-slline+0.005,(i+hitInd-0.5)/depth,(25-10,120-10,180-10))
@@ -166,10 +160,17 @@ def generateOCHLPicture(candles, _H = None, _W = None):
     drawCandles(img, candles, firstSquare,  minV, maxV, p1, p2)
 
     return img
-############################################################
 
+#====================================================>
+#=========== DATA PREPARATION
+#====================================================>
+# TODO Get path to validation set from
+# config file or command line arguments
+#====================================================>
+# TODO fix bug of incorrect processing
+# of prices with small decimal part
+#====================================================>
 
-# TODO Get path to validation set from config file or command line arguments
 def processAsset(filename = os.path.join(os.getcwd(),
                                          "ValidationDatasets",
                                          "USDCAD30.csv")):
@@ -177,15 +178,16 @@ def processAsset(filename = os.path.join(os.getcwd(),
     with open(filename, "r") as ochlfile:
         reader = csv.reader(ochlfile)
         for line in reader:
-            # TODO fix bug of incorrect processing
-            # of prices with small decimal part
-            # Actual for FOREX
             O.append(float(line[0])*100)
             C.append(float(line[1])*100)
             H.append(float(line[2])*100)
             L.append(float(line[3])*100)
             V.append(float(line[4]))
 ***REMOVED***
+
+#====================================================>
+#=========== INTERFACE
+#====================================================>
 
 def initialize_socket():
     ***REMOVED***
@@ -205,6 +207,13 @@ def initialize_socket():
 
     return s
 
+#====================================================>
+#=========== SIGNALS VALIDATION
+#====================================================>
+# TODO - expore idea of calculating P/L
+# over H&L instead of a close price
+#====================================================>
+
 def within(price, h, l):
     return price <= h and price >= l
 
@@ -219,7 +228,6 @@ def validatePosition(price, index, SL, TP, H ,L):
         elif within (TP, h, l):
             return abs(price - TP), index
 
-    # Probably incorrect, but makes sence
     return SL, len(H)
 
 def validateFeedback(feedback, O, C, H, L):
@@ -256,9 +264,6 @@ def validateFeedback(feedback, O, C, H, L):
                 lines[-1].append(sltp["printable_metadata"][param])
             lines[-1].append(hitPrice)
 
-            #print(">>> ", sltp["printable_metadata"])
-            #print("<<< ", hitPrice)
-            #print()
         # CLOSEST LEVEL INSTEAD OF CLOSE PRICE
         minDelta = min(hitPrice, minDelta)
         maxDelta = max(hitPrice, maxDelta)
@@ -270,6 +275,13 @@ def validateFeedback(feedback, O, C, H, L):
 
 
     return total, minDelta, maxDelta, minus, plus, cleanLosses, cleanProfit, header, lines
+
+#====================================================>
+#=========== STATS RECORDING
+#====================================================>
+# TODO - Should we just merge stats related to
+# same build? Maybe updating PDF file with new pages?
+#====================================================>
 
 def dump_case(header, lines, asset):
     major, minor = parse_asset_name(asset)
@@ -319,6 +331,10 @@ def dump_stats(total, minDelta, maxDelta, minus, plus, minusAbs, plusAbs, asset)
         logfile.write(f"PR,{PR*100}\n")
         logfile.write(f"TR,{TR*100}\n")
 
+#====================================================>
+#=========== PROCESSING TEST ID OVER M_m*_t* FORMAT
+#====================================================>
+
 def prepare_directory(major):
     expectedPath = os.path.join(os.getcwd(), "dataset0", major)
     isExist = os.path.exists(expectedPath)
@@ -338,6 +354,14 @@ def parse_asset_name(asset):
     basename = "_".join(rest)
     return major, basename
 
+
+#====================================================>
+#=========== CLI ARGUMENTS PROCESSING
+#====================================================>
+# TODO change arguments to named ones -L -R -P ...
+#====================================================>
+# TODO process multiple assets
+#====================================================>
 
 feedbackCollector = {}
 
@@ -374,10 +398,15 @@ else:
 first_index = lambda _ : _
 last_index = lambda _ : _ + WINDOW_SIZE
 previous_last_index = lambda _ : _ + WINDOW_SIZE - 1
-# TODO do it asset by asset
 s = initialize_socket()
 
 
+#====================================================>
+#=========== SENDING ASSETS DATA TO EVALUATOR
+#====================================================>
+# TODO - fix in next releases bug of adding
+# window size to maximum test depts
+#====================================================>
 
 ***REMOVED***
 
@@ -394,15 +423,12 @@ s = initialize_socket()
     candles = []
 
 
-    # ERROR - Instead of MAX_DEPTH i'm iterating WINDOW + MAX_DEPTH
-    # Means 1000 + ...
     while last_index(sliding_window_index) < min(len(O), test_start + WINDOW_SIZE + MAX_DEPTH):
 
         conn, addr = s.accept()
         data = conn.recv(10000)
 ***REMOVED***
 ***REMOVED***
-        #print(rawAsset)
 ***REMOVED***
         asset = assetData["asset"]
 
@@ -414,7 +440,6 @@ s = initialize_socket()
         if "feedback" in assetData:
             feedback = assetData["feedback"]
             entry_calndle = previous_last_index(sliding_window_index)
-#
             candles[-1].sl = feedback["SL"]
             candles[-1].tp = feedback["TP"]
             feedback["ENTRY"] = candles[-1]
@@ -440,6 +465,13 @@ s = initialize_socket()
 ***REMOVED***
 ***REMOVED***
 ***REMOVED***
+
+#====================================================>
+#=========== SIGNALS REVIEW AND STATS SAVING
+#====================================================>
+# TODO - think how end of test could be processed
+# without stopping the execution
+#====================================================>
 
     asset = asset + "_" + RANDOM_MODE + "_" + "D" + str(MAX_DEPTH)
     result, worstCase, bestCase, minus, plus, cleanLosses, cleanProfit, header, lines = validateFeedback(feedbackCollector, O, C, H, L)
@@ -472,4 +504,5 @@ s = initialize_socket()
 
     feedbackCollector = {}
     break
+
 ***REMOVED***
