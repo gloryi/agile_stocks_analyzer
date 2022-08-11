@@ -14,6 +14,7 @@
 ***REMOVED***
 ***REMOVED***
 
+***REMOVED***
 
 ***REMOVED***
 ***REMOVED***
@@ -138,6 +139,6 @@
 
 
 ***REMOVED***
-assets = readAssets()
+***REMOVED***
 ***REMOVED***
 ***REMOVED***

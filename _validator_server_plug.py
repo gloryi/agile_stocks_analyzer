@@ -4,8 +4,6 @@ from autobahn.twisted.websocket import WebSocketServerProtocol, \
 import random
 ***REMOVED***
 import threading
-import telegram
-from config import *
 
 kill_signal_triggered = False
 

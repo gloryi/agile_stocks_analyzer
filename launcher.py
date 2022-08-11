@@ -8,23 +8,26 @@ import signal
 MARKETS_MODEL = "INTRAWEEK"
 #MARKETS_MODEL = "TEST"
 
-
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+CONFIG_DIRECTORY = os.path.join(os.getcwd(), "API_CONFIG")
 
 
-list_of_tokens = readAssets()
+***REMOVED***
+    with open(filepath, "r") as assetsFile:
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+***REMOVED***
+
+
+list_of_tokens = readAssets(os.path.join(CONFIG_DIRECTORY,
+                                         "capital_asset_urls.csv"))
 
 project_path = os.getcwd()
 
 casted_processes = []
 
-p = subprocess.Popen(["python3", os.path.join(project_path,"server.py")])
+p = subprocess.Popen(["python3", os.path.join(project_path,"telegram_proxy.py")])
 casted_processes.append(p)
 
 p = subprocess.Popen(["python3", os.path.join(project_path,"dataFetcher.py")])
