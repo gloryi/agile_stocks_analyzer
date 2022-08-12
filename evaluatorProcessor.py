@@ -1,12 +1,17 @@
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketClientFactory
+
 ***REMOVED***
+***REMOVED***
+***REMOVED***
+import cv2 as cv
+
 import random
-***REMOVED***
-import numpy as np
+from tqdm import tqdm
 from datetime ***REMOVED***delta
-import pandas as pd
+***REMOVED***
 import talib
+
 from talib import ATR as talibATR
 from talib import RSI as talibRSI
 from talib import MFI
@@ -14,18 +19,23 @@ from talib import MACD as talibMACD
 from talib import KAMA as talibKAMA
 from talib import EMA as talibEMA
 from talib import ADX as talibADX
+from talib import SAR as talibSAR
 from talib import PLUS_DI as talibPLUS_DI
 from talib import MINUS_DI as talibMINUS_DI
 from talib import CORREL as talibCORREL
 from talib import ADOSC as talibADOSC
-from collections import namedtuple
-import cv2 as cv
-import numpy as np
-***REMOVED***
 
+import numpy as np
+import pandas as pd
+from collections import namedtuple
 ***REMOVED***
-***REMOVED***
-from tqdm import tqdm
+import statistics
+
+#====================================================>
+#=========== GLOBAL SETTINGS
+#====================================================>
+# TODO move to configfile ones which possible to move
+#====================================================>
 
 TOKEN_NAME = "UNKNOWN"
 TEST_CASE = "UNKNOWN"
@@ -35,14 +45,37 @@ MA_LAG = 200
 LOG_TOLERANCE = 3
 META_SIZE = 18
 ***REMOVED***
+#VISUALISE = False
+VISUALISE = True
 
-# TODO move to config file
-# or command line arguments
 ***REMOVED***
 ***REMOVED***
 ***REMOVED***
+RANDOM = None
+SIGNALS_LOG = []
+RECORD_STATS = True
 
-# TODO Create state machine for handling global variables
+isFirst = True
+
+
+INTERVAL_M = 30
+#INTERVAL_M = 1
+INTERVAL = f"{INTERVAL_M}m"
+
+if INTERVAL_M == 15:
+    TIMEFRAME = "3d"
+elif INTERVAL_M == 10:
+    TIMEFRAME = "2d"
+elif INTERVAL_M == 30:
+    TIMEFRAME = "30m"
+else:
+    TIMEFRAME = "1d"
+
+INTERVAL_M = INTERVAL_M / 2
+
+#====================================================>
+#=========== SKETCH OF OOP SUPERVISER MODEL
+#====================================================>
 
 class Event():
     def __init__(self, ID, decision_model, threshold, actual_value):
@@ -70,8 +103,9 @@ class Superviser():
 
 # As far as i wanted to sllep it whould be another global variable
 
-SIGNALS_LOG = []
-RECORD_STATS = True
+#====================================================>
+#=========== SUPERVISER MODEL
+#====================================================>
 
 def create_stats_record(label, value):
     global RECORD_STATS
@@ -83,6 +117,14 @@ def clear_stats_records():
     global RECORD_STATS
     global SIGNALS_LOG
     SIGNALS_LOG =  {}
+
+def simple_log(*message, log_level = 1):
+    if log_level >= LOG_TOLERANCE:
+        print(*message)
+
+#====================================================>
+#=========== RANDOMIZER
+#====================================================>
 
 class RandomMachine():
     def __init__(self, initial_seed, keys_depth = 100):
@@ -121,16 +163,18 @@ class RandomMachine():
     def  shuffle(self, container):
         random.shuffle(container)
 
-RANDOM = None
 
 
+#====================================================>
+#=========== META PARAMETERS. SIMPLE//STUPID
+#====================================================>
 
 
 meta_params = [1 for _ in range(META_SIZE)]
 meta_option = [None for _ in range(META_SIZE)]
 meta_indexes = [i for i in range(META_SIZE)]
 
-meta_option[0] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
+meta_option[0] =  lambda : RANDOM.choice([0.5, 1, 1.5])
 meta_params[0] = 1
 
 meta_option[1] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
@@ -163,8 +207,10 @@ meta_params[7] = 1
 meta_option[8] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[8] = 1
 
-meta_option[9] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
-meta_params[9] = 1
+# SAR WEIGHT
+MT_SAR_WEIGHT = 9
+meta_option[MT_SAR_WEIGHT] =  lambda : RANDOM.choice([1, 1.5, 2])
+meta_params[MT_SAR_WEIGHT] = 1
 
 # FAST MA
 meta_option[10] =  lambda : RANDOM.randrange(30, 70,10)
@@ -187,9 +233,10 @@ meta_params[12] = [3,5]
 meta_option[13] =  lambda: RANDOM.randrange(180, 200,25)
 meta_params[13] = 200
 
-# KAMA
-meta_option[14] = lambda : RANDOM.randrange(40, 80, 10)
-meta_params[14] = 50
+# SAR ACCELERATION
+MT_SAR_ACC = 14
+meta_option[MT_SAR_ACC] = lambda : RANDOM.randrange(0, 3, 1)
+meta_params[MT_SAR_ACC] = 0
 
 # BOILINGER
 meta_option[15] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
@@ -219,32 +266,204 @@ meta_params[17] = 1
 
 meta_duplicate = meta_params[:]
 
-isFirst = True
+#====================================================>
+#=========== DRAWER
+#====================================================>
+# TODO rewrite it completely
+#====================================================>
 
-bestKnownMetas = {"tr": 0.0,
-                    "wr": 0.0,
-                    "pr": 0.0,
-                    "estem": 0.0,
-                    "meta": [1, 1, 1, 1, [4, 2], 1, 1, 1, 1, 1]}
+def make_image_snapshot(candles, indicators, p1, p2):
+    #simple_log(candles)
+    #simple_log(indicators)
+    def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
+***REMOVED***
+            X = zone[0]
+            Y = zone[1]
+            dx = zone[2] - X
+            dy = zone[3] - Y
+            X1 = int(X + dx*x1)
+            Y1 = int(Y + dy*y1)
+            X2 = int(X + dx*x2)
+            Y2 = int(Y + dy*y2)
+            cv.rectangle(image,(Y1,X1),(Y2,X2),col,-1)
+        except Exception:
+            pass
 
-INTERVAL_M = 30
-#INTERVAL_M = 1
-INTERVAL = f"{INTERVAL_M}m"
+    def drawLineInZone(image,zone ,x1,y1,x2,y2, col, thickness = 1):
+***REMOVED***
+            X = zone[0]
+            Y = zone[1]
+            dx = zone[2] - X
+            dy = zone[3] - Y
+            X1 = int(X + dx*x1)
+            Y1 = int(Y + dy*y1)
+            X2 = int(X + dx*x2)
+            Y2 = int(Y + dy*y2)
+            cv.line(image,(Y1,X1),(Y2,X2),col,thickness)
+        except Exception:
+            pass
 
-if INTERVAL_M == 15:
-    TIMEFRAME = "3d"
-elif INTERVAL_M == 10:
-    TIMEFRAME = "2d"
-elif INTERVAL_M == 30:
-    TIMEFRAME = "30m"
-else:
-    TIMEFRAME = "1d"
+    def getCandleCol(candle):
+        if candle.green:
+            #col = (94,224,13)
+            col = (0,255,0)
+        elif candle.red:
+            #col = (32,40,224)
+            col = (0,0,255)
+        else:
+            col = (255,255,255)
+        return col
 
-INTERVAL_M = INTERVAL_M / 2
+    def fitTozone(val, minP, maxP):
+        candleRelative =  (val-minP)/(maxP-minP)
+        return candleRelative
 
-def simple_log(*message, log_level = 1):
-    if log_level >= LOG_TOLERANCE:
-        print(*message)
+    def drawCandle(image, zone, candle, minP, maxP, p1, p2):
+        i = candle.index-p1
+        col = getCandleCol(candle)
+        _o,_c,_h,_l = candle.ochl()
+
+        oline = fitTozone(_o, minP, maxP)
+        cline = fitTozone(_c, minP, maxP)
+        lwick = fitTozone(_l, minP, maxP)
+        hwick = fitTozone(_h, minP, maxP)
+
+        if candle.isLong() or candle.isShort():
+            slline = fitTozone(candle.SL, minP, maxP)
+            tpline = fitTozone(candle.TP, minP, maxP)
+            slWick = lwick if abs(slline - lwick) < abs(slline- hwick) else hwick
+            tpWick = lwick if abs(tpline - lwick) < abs(tpline- hwick) else hwick
+            drawSquareInZone(img, zone, 1 - tpWick,(i + 0.5 + 0.1) / depth, 1 - tpline + 0.005,(i + 0.1) / depth,(180-10,58-10,59-10))
+            drawSquareInZone(img, zone, 1 - slWick,(i + 0.5 + 0.1) / depth, 1 - slline + 0.005,(i + 0.1) / depth,(25-10,120-10,180-10))
+
+            if not candle.hitTP is None:
+                hitInd = candle.hitTP - p1
+                drawSquareInZone(img, zone, 1-tpline-0.005,(i+0.5+0.7)/depth,1-tpline+0.005,(hitInd+0.5)/depth,(180-10,58-10,59-10))
+
+            if not candle.hitSL is None:
+                hitInd = candle.hitSL - p1
+                drawSquareInZone(img, zone, 1-slline-0.005,(i+0.5-0.7)/depth,1-slline+0.005,(hitInd+0.5)/depth,(25-10,120-10,180-10))
+
+        drawLineInZone(img, zone, 1-lwick,(i+0.5)/depth,1-hwick,(i+0.5)/depth,col)
+        drawSquareInZone(img, zone, 1-cline,(i+0.5-0.35)/depth,1-oline,(i+0.5+0.35)/depth,col)
+
+
+
+    def drawIndicatorSegment(image, zone, v1, v2, minP, maxP, p1, p2, primaryColor = None):
+        i1 = v1.index-p1
+        i2 = v2.index-p1
+        col = (255,255,255)
+
+        val1 = fitTozone(v1.value, minP, maxP)
+        val2 = fitTozone(v2.value, minP, maxP)
+
+        if v2.bearish or v1.bearish:
+            col = (0,0,255)
+        elif v2.bullish or v1.bullish:
+            col = (0,255,0)
+        elif v2.bad or v1.bad:
+            col = (0,255,255)
+
+        #if not primaryColor is None:
+            #drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1-val1,(i2+0.5)/depth,primaryColor,2)
+        drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1-val2,(i2+0.5)/depth,col,3)
+
+        if v1.longEntry:
+            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,0,(i1+0.5)/depth,(0,180,0),2)
+        if v1.shortEntry:
+            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1,(i1+0.5)/depth,(0,0,180),2)
+
+
+    def minMaxOfZone(candleSequences, indicatorSequences, p1, p2):
+
+        if len(candleSequences) == 0 and len(indicatorSequences) == 0:
+            return 0, 0
+
+        if len(candleSequences) >0:
+            minP = candleSequences[0].ofIdx(p1).l
+            maxP = candleSequences[0].ofIdx(p1).h
+        else:
+            minP = indicatorSequences[0].ofIdx(p1).value
+            maxP = indicatorSequences[0].ofIdx(p1).value
+
+
+        for candleSeq in candleSequences:
+            minP = min(candleSeq.minL(p1, p2), minP)
+            maxP = max(candleSeq.maxH(p1, p2), maxP)
+
+        for indicatorSeq in indicatorSequences:
+            #simple_log(indicatorSeq.values)
+            minP = min(indicatorSeq.minV(p1, p2), minP)
+            maxP = max(indicatorSeq.maxV(p1, p2), maxP)
+
+        rangeP = maxP - minP
+        return minP, maxP
+
+    def drawCandles(img, candles, zone, minV, maxV, p1, p2):
+
+        for candle in candles[p1:p2]:
+            drawCandle(img, zone, candle, minV, maxV, p1, p2)
+
+    def drawIndicator(img, indicator, zone, minV, maxV, p1, p2):
+        for v1, v2 in zip(indicator.values[:-1], indicator.values[1:]):
+            drawIndicatorSegment(img, zone, v1, v2, minV, maxV, p1, p2, indicator.primaryColor)
+
+    def drawLineNet(img, lines_step, H, W):
+        line_interval = W//lines_step
+        for line_counter in range(0, line_interval, 1):
+            line_level = line_counter * lines_step
+            cv.line(img,(line_level, 0),(line_level, H),(75,75,75),1)
+
+
+
+    depth = len(candles[0].candles[p1:p2]) + 1
+    simple_log(f"DRAWING {depth} candles")
+
+    PIXELS_PER_CANDLE = 4
+
+    H, W = 1500, depth * PIXELS_PER_CANDLE
+
+    img = np.zeros((H,W,3), np.uint8)
+
+    zones = []
+    firstSquare  = [H/7*0.1,  20,H/7*3.65, W-20]
+    drawSquareInZone(img, firstSquare, 0,0,1,1,(15,15,15))
+    firstZone = []
+    zones.append(firstSquare)
+    secondSquare = [H/7*3.65-5,20,H/7*4,   W-20]
+    drawSquareInZone(img, secondSquare, 0,0,1,1,(40,40,40))
+    zones.append(secondSquare)
+    thirdSquare = [H/7*4-5,20,H/7*5.5,   W-20]
+    drawSquareInZone(img, thirdSquare, 0,0,1,1,(15,15,15))
+    zones.append(thirdSquare)
+    forthSquare = [H/7*5.5-5,20,H,   W-20]
+    drawSquareInZone(img, forthSquare, 0,0,1,1,(40,40,40))
+    zones.append(forthSquare)
+
+    drawLineNet(img, 75, H, W)
+
+    zoneDrawables = [{"zone" : _, "candles":[],"indicators":[], "min":0,"max":0} for _ in range(len(zones))]
+
+    for candleSeq in candles:
+        zoneDrawables[candleSeq.section]["candles"].append(candleSeq)
+
+    for indicatorSeq in indicators:
+        zoneDrawables[indicatorSeq.section]["indicators"].append(indicatorSeq)
+
+    for drawableSet in zoneDrawables:
+        drawableSet["min"], drawableSet["max"] = minMaxOfZone(drawableSet["candles"], drawableSet["indicators"], p1, p2)
+
+
+    for drawableSet in zoneDrawables:
+        zoneN = drawableSet["zone"]
+        minV = drawableSet["min"]
+        maxV = drawableSet["max"]
+        for indicatorSeq in drawableSet["indicators"]:
+            drawIndicator(img, indicatorSeq, zones[zoneN],  minV, maxV, p1, p2)
+        for candleSeq in drawableSet["candles"]:
+            drawCandles(img, candleSeq, zones[zoneN],  minV, maxV, p1, p2)
+
+    return img
 
 
 
@@ -324,7 +543,7 @@ class CandleSequence():
         self.weight = 1
 
     def addCandle(self, candle):
-        self.candleas.append(candle)
+        self.candles.append(candle)
 
     def ofIdx(self, idx):
         for candle in self.candles:
@@ -457,7 +676,10 @@ class Indicator():
         return min(_.value for _ in self.values[self._toArrayIndex(p1): self._toArrayIndex(p2)])
 
     def average(self, p1, p2):
-        return sum(_.value for _ in self.values[self._toArrayIndex(p1): self._toArrayIndex(p1)])/(p2-p1)
+        return sum(_.value for _ in self.values[self._toArrayIndex(p1): self._toArrayIndex(p2)])/(p2-p1)
+
+    def median(self, p1, p2):
+        return statistics.median(_.value for _ in self.values[self._toArrayIndex(p1): self._toArrayIndex(p2)])
 
     def calculate_acceptance_rate(self):
         signals_emmited = len(list(filter(lambda val: val.bearish or val.bullish, (_ for _ in self.values) )))
@@ -648,6 +870,27 @@ class RSI(Indicator):
     def minV(self, p1, p2):
         return min(_.value for _ in self.values[p1:p2])
 
+class SAR(Indicator):
+    def __init__(self, acceleration, *args, **kw):
+        self.acceleration = acceleration
+        super().__init__(*args, **kw)
+
+    def calculate(self):
+        arrHigh = []
+        arrLow = []
+
+        for index in range(0, len(self.candleSequence.candles)):
+            arrHigh.append(self.candleSequence.candles[index].h)
+            arrLow.append(self.candleSequence.candles[index].l)
+
+        arrHigh = np.asarray(arrHigh)
+        arrLow = np.asarray(arrLow)
+
+        arrSar = talibSAR(arrHigh, arrLow)
+        for index in range(len(self.candleSequence.candles)):
+            self.values.append(IndicatorValue( arrSar[index], index))
+
+
 class MACD(Indicator):
     def __init__(self, fastperiod, slowperiod, signalperiod, *args, **kw):
         self.fastperiod=fastperiod
@@ -815,6 +1058,17 @@ class Strategy():
             if candle.c < indicatorValue.value:
                 indicatorValue.markBearish()
 
+    def evaluateSAR(self, candleSequence, sar, window):
+        for candle in candleSequence.candles[window]:
+
+            indicatorValue = sar.ofIdx(candle.index)
+
+            if candle.c > indicatorValue.value:
+                indicatorValue.markBullish()
+
+            if candle.c < indicatorValue.value:
+                indicatorValue.markBearish()
+
     def evaluateMACross(self, candleSequence, ma50, ma200, window):
         for candle in candleSequence.candles[window]:
 
@@ -838,15 +1092,15 @@ class Strategy():
 
             lastCandleIdx = candle.index
 
-            p1 = lastCandleIdx - MA_LAG//2
+            p1 = lastCandleIdx - MA_LAG//4
             p2 = lastCandleIdx
-            average = atr.average(p1, p2)
+            average = atr.median(p1, p2)
 
             #TODO change to average
             maxATR = atr.maxV(p1, p2)
             minATR = atr.minV(p1, p2)
-            minOptimal = average - (average - minATR)/4
-            maxOptimal = average  + (maxATR - average)/4
+            minOptimal = average - (average - minATR)/2
+            maxOptimal = average  + (maxATR - average)/2
 
             indicatorValue = atr.ofIdx(candle.index)
             if indicatorValue.value < minOptimal or indicatorValue.value > maxOptimal:
@@ -911,23 +1165,25 @@ class Strategy():
         for candle in candleSequence.candles[window]:
             lastCandleIdx = candle.index
 
-            p1 = lastCandleIdx - MA_LAG//2
+            p1 = lastCandleIdx - MA_LAG//4
             p2 = lastCandleIdx
-            average = volume.average(p1, p2)
+            average = volume.median(p1, p2)
 
             #TODO change to average
             maxVol = volume.maxV(p1, p2)
             minVol = volume.minV(p1, p2)
-            minOptimal = average - (average - minVol)/4
-            maxOptimal = average  + (maxVol - average)/4
+            minOptimal = average - (average - minVol)/2
+            maxOptimal = average  + (maxVol - average)/2
 
 
             indicatorValue = volume.ofIdx(candle.index)
-            if indicatorValue.value > maxOptimal and candle.green:
-                indicatorValue.markBullish()
-            elif indicatorValue.value > maxOptimal and candle.red:
-                indicatorValue.markBearish()
-            elif indicatorValue.value < minOptimal:
+            #if indicatorValue.value > maxOptimal and candle.green:
+                #indicatorValue.markBullish()
+            #elif indicatorValue.value > maxOptimal and candle.red:
+                #indicatorValue.markBearish()
+            #elif indicatorValue.value < minOptimal:
+                #indicatorValue.markBad()
+            if indicatorValue.value < minOptimal:
                 indicatorValue.markBad()
 
     def evaluateCorrel(self, candleSequence, correl, window):
@@ -1072,18 +1328,18 @@ class Strategy():
         evaluated["indicators"].append(ma50)
 
 
-        create_stats_record("KAMA_PERIOD", meta_params[14]*2)
-        create_stats_record("KAMA_WEIGHT", meta_params[8])
-        kama = KAMA(meta_params[14]*2, HA,0, (49+30,0+30,100+30))
-        kama.calculate()
-        kama.setWeight(meta_params[8])
+        #create_stats_record("KAMA_PERIOD", meta_params[14]*2)
+        #create_stats_record("KAMA_WEIGHT", meta_params[8])
+        #kama = KAMA(meta_params[14]*2, HA,0, (49+30,0+30,100+30))
+        #kama.calculate()
+        #kama.setWeight(meta_params[8])
         #self.evaluateMA(HA, kama, window)
-        evaluated["indicators"].append(kama)
+        #evaluated["indicators"].append(kama)
 
 
         create_stats_record("EMA50_PERIOD", meta_params[14])
         create_stats_record("EMA50_WEIGHT", meta_params[17])
-        ema50 = EMA(meta_params[14], HA,0, (49+30,0+30,100+30))
+        ema50 = EMA(meta_params[13]//2, HA,0, (49+30,0+30,100+30))
         ema50.calculate()
         ema50.setWeight(meta_params[17])
         #self.evaluateMA(HA, ema50, window)
@@ -1091,7 +1347,7 @@ class Strategy():
 
         create_stats_record("EMA30_PERIOD", meta_params[14])
         create_stats_record("EMA30_WEIGHT", meta_params[17])
-        ema30 = EMA(meta_params[14]//2, HA,0, (49+30,0+30,100+30))
+        ema30 = EMA(meta_params[10]//2, HA,0, (49+30,0+30,100+30))
         ema30.calculate()
         ema30.setWeight(meta_params[17])
         self.evaluateMACross(HA, ema30, ema50, window)
@@ -1102,31 +1358,31 @@ class Strategy():
         atr = ATR(14, candles,1, (49,0,100))
         atr.setWeight(meta_params[3])
         atr.calculate()
-        #self.evaluateATR(candles, atr, window)
+        self.evaluateATR(candles, atr, window)
         evaluated["indicators"].append(atr)
 
-        create_stats_record("RSI_PERIOD", meta_params[11])
-        create_stats_record("RSI_WEIGHT", meta_params[6])
-        rsi = RSI(meta_params[11],candles,3, (49,0,100))
-        rsi.setWeight(meta_params[6])
-        rsi.calculate()
+        #create_stats_record("RSI_PERIOD", meta_params[11])
+        #create_stats_record("RSI_WEIGHT", meta_params[6])
+        #rsi = RSI(meta_params[11],candles,3, (49,0,100))
+        #rsi.setWeight(meta_params[6])
+        #rsi.calculate()
         #self.evaluateRSI(candles, rsi, window)
-        evaluated["indicators"].append(rsi)
+        #evaluated["indicators"].append(rsi)
 
         create_stats_record("MACD_WEIGHT", meta_params[7])
         # I SHOULD INCLUDE DIRECTION TOO? I MEAN AS FOR ADOSC?
-        macd = MACD(12, 26, 9,candles, 1, (49,0,100))
-        macd.setWeight(meta_params[7])
-        macd.calculate()
-        self.evaluateMACD(candles, macd, window)
-        evaluated["indicators"].append(macd)
+        #macd = MACD(12, 26, 9,candles, 1, (49,0,100))
+        #macd.setWeight(meta_params[7])
+        #macd.calculate()
+        #self.evaluateMACD(candles, macd, window)
+        #evaluated["indicators"].append(macd)
 
-        create_stats_record("ADOSC_WEIGHT", meta_params[9])
-        adosc = ADOSC(3, 10, candles, 2, (49,0,100))
-        adosc.setWeight(meta_params[9])
-        adosc.calculate()
+        #create_stats_record("ADOSC_WEIGHT", meta_params[9])
+        #adosc = ADOSC(3, 10, candles, 2, (49,0,100))
+        #adosc.setWeight(meta_params[9])
+        #adosc.calculate()
         #self.evaluateADOSC(candles, adosc, window)
-        evaluated["indicators"].append(adosc)
+        #evaluated["indicators"].append(adosc)
 
         adx = ADX(14, candles, 3, (49,0,100))
         adx.setWeight(1)
@@ -1151,12 +1407,21 @@ class Strategy():
         #self.evaluateCorrel(candles, correl, window)
         #evaluated["indicators"].append(correl)
 
-        create_stats_record("VOLUME_WEIGHT", meta_params[9])
+        #create_stats_record("VOLUME_WEIGHT", meta_params[9])
         volume = VOLUME(candles, 2, (49,0,100))
-        volume.setWeight(meta_params[9])
+        volume.setWeight(1)
         volume.calculate()
-        #self.evaluateVolume(candles,volume, window)
+        self.evaluateVolume(candles,volume, window)
         evaluated["indicators"].append(volume)
+
+        create_stats_record("SAR_WEIGHT", meta_params[MT_SAR_WEIGHT])
+        create_stats_record("SAR_ACC", meta_params[MT_SAR_ACC])
+        sar = SAR(meta_params[MT_SAR_ACC], candles, meta_params[MT_SAR_ACC], (180, 100, 36))
+        sar.setWeight(meta_params[MT_SAR_WEIGHT])
+        sar.calculate()
+        self.evaluateSAR(candles, sar, window)
+        evaluated["indicators"].append(sar)
+
 
         self.checkConfluence(evaluated, window)
 
@@ -1164,195 +1429,6 @@ class Strategy():
 
 
 
-def generateOCHLPicture(candles, indicators, p1, p2):
-    #simple_log(candles)
-    #simple_log(indicators)
-    def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
-***REMOVED***
-            X = zone[0]
-            Y = zone[1]
-            dx = zone[2] - X
-            dy = zone[3] - Y
-            X1 = int(X + dx*x1)
-            Y1 = int(Y + dy*y1)
-            X2 = int(X + dx*x2)
-            Y2 = int(Y + dy*y2)
-            cv.rectangle(image,(Y1,X1),(Y2,X2),col,-1)
-        except Exception:
-            pass
-
-    def drawLineInZone(image,zone ,x1,y1,x2,y2, col, thickness = 1):
-***REMOVED***
-            X = zone[0]
-            Y = zone[1]
-            dx = zone[2] - X
-            dy = zone[3] - Y
-            X1 = int(X + dx*x1)
-            Y1 = int(Y + dy*y1)
-            X2 = int(X + dx*x2)
-            Y2 = int(Y + dy*y2)
-            cv.line(image,(Y1,X1),(Y2,X2),col,thickness)
-        except Exception:
-            pass
-
-    def getCandleCol(candle):
-        if candle.green:
-            #col = (94,224,13)
-            col = (0,255,0)
-        elif candle.red:
-            #col = (32,40,224)
-            col = (0,0,255)
-        else:
-            col = (255,255,255)
-        return col
-
-    def fitTozone(val, minP, maxP):
-        candleRelative =  (val-minP)/(maxP-minP)
-        return candleRelative
-
-    def drawCandle(image, zone, candle, minP, maxP, p1, p2):
-        i = candle.index-p1
-        col = getCandleCol(candle)
-        _o,_c,_h,_l = candle.ochl()
-
-        oline = fitTozone(_o, minP, maxP)
-        cline = fitTozone(_c, minP, maxP)
-        lwick = fitTozone(_l, minP, maxP)
-        hwick = fitTozone(_h, minP, maxP)
-
-        if candle.isLong() or candle.isShort():
-            slline = fitTozone(candle.SL, minP, maxP)
-            tpline = fitTozone(candle.TP, minP, maxP)
-            slWick = lwick if abs(slline - lwick) < abs(slline- hwick) else hwick
-            tpWick = lwick if abs(tpline - lwick) < abs(tpline- hwick) else hwick
-            drawSquareInZone(img, zone, 1 - tpWick,(i + 0.5 + 0.1) / depth, 1 - tpline + 0.005,(i + 0.1) / depth,(180-10,58-10,59-10))
-            drawSquareInZone(img, zone, 1 - slWick,(i + 0.5 + 0.1) / depth, 1 - slline + 0.005,(i + 0.1) / depth,(25-10,120-10,180-10))
-
-            if not candle.hitTP is None:
-                hitInd = candle.hitTP - p1
-                drawSquareInZone(img, zone, 1-tpline-0.005,(i+0.5+0.7)/depth,1-tpline+0.005,(hitInd+0.5)/depth,(180-10,58-10,59-10))
-
-            if not candle.hitSL is None:
-                hitInd = candle.hitSL - p1
-                drawSquareInZone(img, zone, 1-slline-0.005,(i+0.5-0.7)/depth,1-slline+0.005,(hitInd+0.5)/depth,(25-10,120-10,180-10))
-
-        drawLineInZone(img, zone, 1-lwick,(i+0.5)/depth,1-hwick,(i+0.5)/depth,col)
-        drawSquareInZone(img, zone, 1-cline,(i+0.5-0.35)/depth,1-oline,(i+0.5+0.35)/depth,col)
-
-
-
-    def drawIndicatorSegment(image, zone, v1, v2, minP, maxP, p1, p2, primaryColor = None):
-        i1 = v1.index-p1
-        i2 = v2.index-p1
-        col = (255,255,255)
-
-        val1 = fitTozone(v1.value, minP, maxP)
-        val2 = fitTozone(v2.value, minP, maxP)
-
-        if v2.bearish or v1.bearish:
-            col = (0,0,255)
-        elif v2.bullish or v1.bullish:
-            col = (0,255,0)
-        elif v2.bad or v1.bad:
-            col = (0,255,255)
-
-        #if not primaryColor is None:
-            #drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1-val1,(i2+0.5)/depth,primaryColor,2)
-        drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1-val2,(i2+0.5)/depth,col,3)
-
-        if v1.longEntry:
-            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,0,(i1+0.5)/depth,(0,180,0),2)
-        if v1.shortEntry:
-            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1,(i1+0.5)/depth,(0,0,180),2)
-
-
-    def minMaxOfZone(candleSequences, indicatorSequences, p1, p2):
-
-        if len(candleSequences) >0:
-            minP = candleSequences[0].ofIdx(p1).l
-            maxP = candleSequences[0].ofIdx(p1).h
-        else:
-            minP = indicatorSequences[0].ofIdx(p1).value
-            maxP = indicatorSequences[0].ofIdx(p1).value
-
-
-        for candleSeq in candleSequences:
-            minP = min(candleSeq.minL(p1, p2), minP)
-            maxP = max(candleSeq.maxH(p1, p2), maxP)
-
-        for indicatorSeq in indicatorSequences:
-            #simple_log(indicatorSeq.values)
-            minP = min(indicatorSeq.minV(p1, p2), minP)
-            maxP = max(indicatorSeq.maxV(p1, p2), maxP)
-
-        rangeP = maxP - minP
-        return minP, maxP
-
-    def drawCandles(img, candles, zone, minV, maxV, p1, p2):
-
-        for candle in candles[p1:p2]:
-            drawCandle(img, zone, candle, minV, maxV, p1, p2)
-
-    def drawIndicator(img, indicator, zone, minV, maxV, p1, p2):
-        for v1, v2 in zip(indicator.values[:-1], indicator.values[1:]):
-            drawIndicatorSegment(img, zone, v1, v2, minV, maxV, p1, p2, indicator.primaryColor)
-
-    def drawLineNet(img, lines_step, H, W):
-        line_interval = W//lines_step
-        for line_counter in range(0, line_interval, 1):
-            line_level = line_counter * lines_step
-            cv.line(img,(line_level, 0),(line_level, H),(75,75,75),1)
-
-
-
-    depth = len(candles[0].candles[p1:p2]) + 1
-    simple_log(f"DRAWING {depth} candles")
-
-    PIXELS_PER_CANDLE = 4
-
-    H, W = 1500, depth * PIXELS_PER_CANDLE
-
-    img = np.zeros((H,W,3), np.uint8)
-
-    zones = []
-    firstSquare  = [H/7*0.1,  20,H/7*3.65, W-20]
-    drawSquareInZone(img, firstSquare, 0,0,1,1,(15,15,15))
-    firstZone = []
-    zones.append(firstSquare)
-    secondSquare = [H/7*3.65-5,20,H/7*4,   W-20]
-    drawSquareInZone(img, secondSquare, 0,0,1,1,(40,40,40))
-    zones.append(secondSquare)
-    thirdSquare = [H/7*4-5,20,H/7*5.5,   W-20]
-    drawSquareInZone(img, thirdSquare, 0,0,1,1,(15,15,15))
-    zones.append(thirdSquare)
-    forthSquare = [H/7*5.5-5,20,H,   W-20]
-    drawSquareInZone(img, forthSquare, 0,0,1,1,(40,40,40))
-    zones.append(forthSquare)
-
-    drawLineNet(img, 75, H, W)
-
-    zoneDrawables = [{"zone" : _, "candles":[],"indicators":[], "min":0,"max":0} for _ in range(len(zones))]
-
-    for candleSeq in candles:
-        zoneDrawables[candleSeq.section]["candles"].append(candleSeq)
-
-    for indicatorSeq in indicators:
-        zoneDrawables[indicatorSeq.section]["indicators"].append(indicatorSeq)
-
-    for drawableSet in zoneDrawables:
-        drawableSet["min"], drawableSet["max"] = minMaxOfZone(drawableSet["candles"], drawableSet["indicators"], p1, p2)
-
-
-    for drawableSet in zoneDrawables:
-        zoneN = drawableSet["zone"]
-        minV = drawableSet["min"]
-        maxV = drawableSet["max"]
-        for indicatorSeq in drawableSet["indicators"]:
-            drawIndicator(img, indicatorSeq, zones[zoneN],  minV, maxV, p1, p2)
-        for candleSeq in drawableSet["candles"]:
-            drawCandles(img, candleSeq, zones[zoneN],  minV, maxV, p1, p2)
-
-    return img
 
 class Payload():
     def __init__(self):
@@ -1496,13 +1572,17 @@ class EVALUATOR():
                        directory,
                        filename_special = None, draw_anyway = False):
         filename = ""
+
+        if VISUALISE == False:
+            return filename
+
         if filename_special is None:
             filename = f"{self.token}.jpg"
         else:
             filename = filename_special
         path = os.path.join(directory, filename)
         if not VALIDATION_MODE or draw_anyway:
-            image = generateOCHLPicture(candles,indicators, p1, p2)
+            image = make_image_snapshot(candles,indicators, p1, p2)
             #simple_log(directory)
             cv.imwrite(path,image)
         return path
@@ -1710,8 +1790,8 @@ class MarketProcessingPayload(Payload):
         self.metaUpdate = ""
         self.last_tr = 0
         self.minor_tr = 0
-        self.prior_tr_info = bestKnownMetas["tr"]
-        self.tweaked_tr_info = bestKnownMetas["tr"]
+        self.prior_tr_info = 0
+        self.tweaked_tr_info = 0
         self.last_sl = None
         self.last_tp = None
         self.best_perfomance = -50
@@ -1866,7 +1946,7 @@ class MarketProcessingPayload(Payload):
         # Kind of cooldown on node side
 
     ***REMOVED***
-            simple_log("\n"*1, log_level=3)
+            #simple_log("\n"*1, log_level=3)
             simple_log("##M ", meta_params, log_level=1)
 
             O, C, H, L, V = self.fetch_market_data(self.prepare_feedback())
