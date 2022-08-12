@@ -88,17 +88,18 @@ def process_stat_file(filename, extracted_features = defaultdict(list)):
 
 corell_result = namedtuple("correlation_result", ["variable","target","coefficient"])
 
-def inspect_against_closed(features, key, closed_correlations = [] ):
-    if key == "CLOSED":
+def inspect_against_closed(features, key, closed_correlations = [], corr_with = "CLOSED" ):
+    if key == corr_with:
         return closed_correlations
-    closed = features["CLOSED"]
+
+    closed = features[corr_with]
     related = features[key]
     #correl = np.corrcoef(closed, related)
     corr, _ = spearmanr(related, closed)
     if corr == corr:
         #print(f"{key} -> {corr}")
         result = corell_result(variable = key,
-                                    target = "CLOSED",
+                                    target = corr_with,
                                     coefficient = corr)
         closed_correlations.append(result)
     return closed_correlations
@@ -109,10 +110,10 @@ def inspect_against_closed(features, key, closed_correlations = [] ):
 
 def present_result(cor, features, comment):
     if VISUALISE:
-        fig = px.scatter(x=features[cor.variable],
-                         y=features[cor.target],
-                         title=f"{comment} <----> {cor.variable}",
-                         trendline="ols")
+        fig = px.scatter(x = features[cor.variable],
+                         y = features[cor.target],
+                         title = f"{comment} || {cor.variable} <---->  {cor.target} ",
+                         trendline = "ols")
         fig.show()
     else:
         print(corr)
@@ -132,11 +133,14 @@ ASSETS_DIR = resolve_directory(MAJOR_BUILD)
 
 stats_fetched = []
 for test_case in KNOWN_TEST_CASES:
-    stats_fetched += find_related_file(ASSETS_DIR, MINOR_BUILD, test_case)
+    stats_fetched += find_related_file(ASSETS_DIR,
+                                       MINOR_BUILD,
+                                       test_case)
 
 extracted_features = defaultdict(list)
 for stats_file in stats_fetched:
-    extracted_features = process_stat_file(stats_file, extracted_features)
+    extracted_features = process_stat_file(stats_file,
+                                           extracted_features)
 
 
 closed_correlations = []
@@ -145,12 +149,32 @@ for feature in extracted_features:
                                                   feature,
                                                   closed_correlations)
 
-print("MAX NEGATIVE CORRELATIONS")
+#print("MAX NEGATIVE CORRELATIONS")
 closed_correlations.sort(key = lambda _ : _.coefficient)
 for i in range(3):
-    present_result(closed_correlations[i], extracted_features, "MAX NEGATIVE AGAINST CLOSED")
-print("MAX POSITIVE CORRELATIONS")
+    present_result(closed_correlations[i], extracted_features, "MAX NEGATIVE")
+#print("MAX POSITIVE CORRELATIONS")
 
 closed_correlations = closed_correlations[::-1]
 for i in range(3):
-    present_result(closed_correlations[i], extracted_features, "MAX POSITIVE AGAINST CLOSED")
+    present_result(closed_correlations[i], extracted_features, "MAX POSITIVE")
+
+
+overall_correlations = []
+for feature1 in extracted_features:
+    for feature2 in extracted_features:
+        overall_correlations = inspect_against_closed(extracted_features,
+                                                             feature1,
+                                                             overall_correlations,
+                                                             feature2)
+#print("MAX NEGATIVE CORRELATIONS")
+overall_correlations = list(filter(lambda _ : _.coefficient !=1,
+                                    overall_correlations))
+overall_correlations.sort(key = lambda _ : _.coefficient)
+for i in range(3):
+    present_result(overall_correlations[i], extracted_features, "MAX NEGATIVE")
+#print("MAX POSITIVE CORRELATIONS")
+
+overall_correlations = overall_correlations[::-1]
+for i in range(3):
+    present_result(overall_correlations[i], extracted_features, "MAX POSITIVE")
