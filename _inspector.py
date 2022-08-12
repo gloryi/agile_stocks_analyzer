@@ -1,21 +1,29 @@
 ***REMOVED***
 ***REMOVED***
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 ***REMOVED***
+***REMOVED***
+from scipy.stats import pearsonr
+from scipy.stats import spearmanr
+import numpy as np
+import plotly.express as px
 
 #====================================================>
 #=========== INSPECTOR CONTEXT
 #====================================================>
 # TODO fix naming for random. "R" would not work
 #====================================================>
+# TODO SET VISUALISATION BASED ON CLI ARGUMENTS
+#====================================================>
 
 MAJOR_BUILD = ""
 MINOR_BUILD = ""
 ASSETS_DIR = ""
 KNOWN_TEST_CASES = ["ORCHID", "AKMENS", "BLAKE"]
+VISUALISE = True
 
 #====================================================>
-#=========== PROCESSING TEST ID OVER M_m*_t* FORMAT
+#=========== PROCESSING STAT FILES WITH M_m*_t* FORMAT
 #====================================================>
 
 def resolve_directory(major):
@@ -30,6 +38,7 @@ def resolve_directory(major):
 def extract_num_samples(filename):
     num_samples = 0
     for filepart in filename.split("_"):
+        filepart = filepart.replace("D", "").replace(".csv", "")
         if filepart.isnumeric():
             num_samples = int(filepart)
 ***REMOVED***
@@ -52,16 +61,65 @@ def find_related_file(directory, minor_build, test_case):
                         target_file = [os.path.join(_r, f)]
     return target_file
 
+#====================================================>
+#=========== EXTRACTING FEATURES FROM STAT FILES
+#====================================================>
 
-#def validate_asset_name(asset):
-    #if "_" not in asset:
-        #raise Exception ("Asset name must follow notation MAJOR_MINOR_TWEEAKS_MODE")
+def process_stat_file(filename, extracted_features = defaultdict(list)):
 
-#def parse_asset_name(asset):
-    #validate_asset_name(asset)
-    #major, *rest = asset.split("_")
-    #basename = "_".join(rest)
-    #return major, basename
+    features_list = []
+    with open(filename, "r") as statfile:
+        reader = csv.reader(statfile)
+        for line in reader:
+            features_list.append(line)
+
+    for value_n in range(1, len(features_list)):
+
+        for feature_n in range(len(features_list[0])):
+            header = features_list[0][feature_n]
+            extracted_features[header].append(float(features_list[value_n][feature_n]))
+
+    return extracted_features
+
+
+#====================================================>
+#=========== LOOKING FOR DEPENDENCIES
+#====================================================>
+
+corell_result = namedtuple("correlation_result", ["variable","target","coefficient"])
+
+def inspect_against_closed(features, key, closed_correlations = [] ):
+    if key == "CLOSED":
+        return closed_correlations
+    closed = features["CLOSED"]
+    related = features[key]
+    #correl = np.corrcoef(closed, related)
+    corr, _ = spearmanr(related, closed)
+    if corr == corr:
+        #print(f"{key} -> {corr}")
+        result = corell_result(variable = key,
+                                    target = "CLOSED",
+                                    coefficient = corr)
+        closed_correlations.append(result)
+    return closed_correlations
+
+#====================================================>
+#=========== OUTPUTS
+#====================================================>
+
+def present_result(cor, features, comment):
+    if VISUALISE:
+        fig = px.scatter(x=features[cor.variable],
+                         y=features[cor.target],
+                         title=f"{comment} <----> {cor.variable}",
+                         trendline="ols")
+        fig.show()
+    else:
+        print(corr)
+
+#====================================================>
+#=========== CLI ARGS AND RUNNING
+#====================================================>
 
 try:
     MAJOR_BUILD = sys.argv[1]
@@ -76,6 +134,23 @@ stats_fetched = []
 for test_case in KNOWN_TEST_CASES:
     stats_fetched += find_related_file(ASSETS_DIR, MINOR_BUILD, test_case)
 
-print("PROCESSING")
+extracted_features = defaultdict(list)
 for stats_file in stats_fetched:
-    print(stats_file)
+    extracted_features = process_stat_file(stats_file, extracted_features)
+
+
+closed_correlations = []
+for feature in extracted_features:
+    closed_correlations =  inspect_against_closed(extracted_features,
+                                                  feature,
+                                                  closed_correlations)
+
+print("MAX NEGATIVE CORRELATIONS")
+closed_correlations.sort(key = lambda _ : _.coefficient)
+for i in range(3):
+    present_result(closed_correlations[i], extracted_features, "MAX NEGATIVE AGAINST CLOSED")
+print("MAX POSITIVE CORRELATIONS")
+
+closed_correlations = closed_correlations[::-1]
+for i in range(3):
+    present_result(closed_correlations[i], extracted_features, "MAX POSITIVE AGAINST CLOSED")
