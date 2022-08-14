@@ -48,21 +48,23 @@ try:
     validators = []
     evaluators = []
 
+    print(f"Running test of {TEST_MODE} detalization")
+
     if TEST_MODE == "MINI":
-        TR1 = 100
-        TR2 = 200
+        TRN1 = 100
+        TRN2 = 200
 
     if TEST_MODE == "FULL":
-        TR1 = 500
-        TR2 = 1000
+        TRN1 = 500
+        TRN2 = 1000
 
     if TEST_MODE == "EXTRA":
-        TR1 = 2000
-        TR2 = 5000
+        TRN1 = 2000
+        TRN2 = 5000
 
     if TEST_MODE == "LEGACY":
-        TR1 = 500
-        TR2 = 1000
+        TRN1 = 500
+        TRN2 = 1000
         EVALUATOR = "_legacyEvaluatorProcessor.py"
 
 except Exception as e:
@@ -82,17 +84,20 @@ evaluators = []
 ################## FIRST LOAD
 ***REMOVED***
 if TEST_SET == 0:
-    validator, evaluator = launch_test("ORCHID", TRN1, 7777)
-    validators.append(validator)
-    evaluators.append(evaluator)
-
     validator, evaluator = launch_test("AKMENS", TRN2, 7780)
     validators.append(validator)
     evaluators.append(evaluator)
 
-    validator, evaluator = launch_test("BLAKE", TRN2, 7782)
+    validator, evaluator = launch_test("ORCHID", TRN1, 7777)
     validators.append(validator)
     evaluators.append(evaluator)
+
+    validator, evaluator = launch_test("BLAKE", TRN1, 7781)
+    validators.append(validator)
+    evaluators.append(evaluator)
+
+
+
 
     suspend_current(validators, evaluators)
 
@@ -101,17 +106,19 @@ if TEST_SET == 0:
 ################## SECOND LOAD
 ***REMOVED***
 if TEST_SET == 1:
-    validator, evaluator = launch_test("AKMENS", TRN1, 7779)
-    validators.append(validator)
-    evaluators.append(evaluator)
 
     validator, evaluator = launch_test("ORCHID", TRN2, 7778)
     validators.append(validator)
     evaluators.append(evaluator)
 
-    validator, evaluator = launch_test("R", TRN2, 7784)
+    validator, evaluator = launch_test("AKMENS", TRN1, 7779)
     validators.append(validator)
     evaluators.append(evaluator)
+
+    validator, evaluator = launch_test("R", TRN1, 7783)
+    validators.append(validator)
+    evaluators.append(evaluator)
+
 
     suspend_current(validators, evaluators)
 
@@ -119,11 +126,12 @@ if TEST_SET == 1:
 ################## THIRD LOAD
 ***REMOVED***
 if TEST_SET == 2:
-    validator, evaluator = launch_test("BLAKE", TRN1, 7781)
+
+    validator, evaluator = launch_test("BLAKE", TRN2, 7782)
     validators.append(validator)
     evaluators.append(evaluator)
 
-    validator, evaluator = launch_test("R", TRN1, 7783)
+    validator, evaluator = launch_test("R", TRN2, 7784)
     validators.append(validator)
     evaluators.append(evaluator)
 

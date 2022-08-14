@@ -171,10 +171,10 @@ for feature1 in extracted_features:
 overall_correlations = list(filter(lambda _ : _.coefficient !=1,
                                     overall_correlations))
 overall_correlations.sort(key = lambda _ : _.coefficient)
-for i in range(3):
+for i in range(5):
     present_result(overall_correlations[i], extracted_features, "MAX NEGATIVE")
 #print("MAX POSITIVE CORRELATIONS")
 
 overall_correlations = overall_correlations[::-1]
-for i in range(3):
+for i in range(5):
     present_result(overall_correlations[i], extracted_features, "MAX POSITIVE")

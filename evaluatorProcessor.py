@@ -173,7 +173,7 @@ class RandomMachine():
 #=========== META PARAMETERS. SIMPLE//STUPID
 #====================================================>
 
-META_SIZE = 20
+META_SIZE = 24
 RESERVED_META = 26
 
 meta_params = [1 for _ in range(RESERVED_META)]
@@ -252,41 +252,40 @@ meta_option[15] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[15] = 1
 
 # DXDI
-meta_option[16] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
-meta_params[16] = 1
+MT_DXDI_WEIGHT = 16
+meta_option[MT_DXDI_WEIGHT] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
+meta_params[MT_DXDI_WEIGHT] = 1
 
 # EMA
 meta_option[17] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[17] = 1
 
 
-#
+
 MT_INDICATORS_DEPTH = 18
 meta_option[MT_INDICATORS_DEPTH] = lambda : RANDOM.choice([3,4,5,6])
 meta_params[MT_INDICATORS_DEPTH] = 3
 
 
-#
+
 MT_WINDOW = 19
 meta_option[MT_WINDOW] = lambda : RANDOM.choice([0, 100, 200, 300, 400])
 meta_params[MT_WINDOW] = 300
 
-#
+
 MT_CONFL_DEPTH = 20
 meta_option[MT_CONFL_DEPTH] = lambda : RANDOM.choice([1,2,3,4,5])
 meta_params[MT_CONFL_DEPTH] = 3
 
-#
+
 MT_CONFL_TRESH = 21
 meta_option[MT_CONFL_TRESH] = lambda : RANDOM.choice([0.5, 0.6, 0.7, 0.8])
 meta_params[MT_CONFL_TRESH] = 0.7
 
-#
-MT_SLTP_MODE = 22
-meta_option[MT_SLTP_MODE] = lambda : RANDOM.choice(["ATR", "SAR"])
-meta_params[MT_SLTP_MODE] = "SAR"
+MT_SET_IGNORE = 22
+meta_option[MT_SET_IGNORE] = lambda : RANDOM.choice([True, False])
+meta_params[MT_SET_IGNORE] = False
 
-#
 MT_SLTP_REV = 23
 meta_option[MT_SLTP_REV] = lambda : RANDOM.choice([True, False])
 meta_params[MT_SLTP_REV] = True
@@ -295,9 +294,10 @@ meta_params[MT_SLTP_REV] = True
 #meta_option[MT_CHECK_ACC] = lambda : RANDOM.choice([True, False])
 #meta_option[MT_CHECK_ACC] = False
 
-MT_SET_IGNORE = 24
-meta_option[MT_SET_IGNORE] = lambda : RANDOM.choice([True, False])
-meta_params[MT_SET_IGNORE] = False
+#
+MT_SLTP_MODE = 24
+meta_option[MT_SLTP_MODE] = lambda : RANDOM.choice(["ATR", "SAR"])
+meta_params[MT_SLTP_MODE] = "SAR"
 
 #
 MT_SATE_MACHINE_CONF = 25
@@ -1221,10 +1221,10 @@ class Strategy():
         for candle in candleSequence.candles[window]:
 
             indicatorValue = ma.ofIdx(candle.index)
-            if candle.c > indicatorValue.value and indicatorValue.series >= 2 or indicatorValue.series > 5:
+            if candle.c > indicatorValue.value and indicatorValue.series >= 2 and indicatorValue.avgacc > 0 or indicatorValue.series > 5:
                 indicatorValue.markBullish()
 
-            if candle.c < indicatorValue.value and indicatorValue.series <= - 2 or indicatorValue.series < -5:
+            if candle.c < indicatorValue.value and indicatorValue.series <= - 2 and indicatorValue.avgacc > 0 or indicatorValue.series < -5:
                 indicatorValue.markBearish()
 
     def evaluateSAR(self, candleSequence, sar, window):
@@ -1244,10 +1244,10 @@ class Strategy():
             slowMa = ma200.ofIdx(candle.index)
             fastMa = ma50.ofIdx(candle.index)
             indicatorValue = fastMa
-            if fastMa.value > slowMa.value and (candle.c > fastMa.value and fastMa.series >= 2 or fastMa.series > 5):
+            if fastMa.value > slowMa.value and (candle.c > fastMa.value and fastMa.series >= 2 and indicatorValue.avgacc > 0  or fastMa.series > 5):
                 indicatorValue.markBullish()
 
-            if fastMa.value < slowMa.value and (candle.c < fastMa.value and fastMa.series <= -2 or fastMa.series < -5):
+            if fastMa.value < slowMa.value and (candle.c < fastMa.value and fastMa.series <= -2 and indicatorValue.avgacc > 0 or fastMa.series < -5):
                 indicatorValue.markBearish()
 
 
@@ -1280,7 +1280,7 @@ class Strategy():
 
             indicatorValue = rsi.ofIdx(candle.index)
 
-            if indicatorValue.value < 35 and indicatorValue.value > 10 and indicatorValue.series <= -2 and indicatorValue.is_speeding_up():
+            if indicatorValue.value < 35 and indicatorValue.value > 10 and indicatorValue.series <= -2 and not indicatorValue.is_speeding_up():
                 indicatorValue.markBullish()
 
             elif indicatorValue.value > 65 and indicatorValue.value < 90 and indicatorValue.series >= 2 and not indicatorValue.is_speeding_up():
@@ -1304,10 +1304,10 @@ class Strategy():
             dx = plus_di.ofIdx(candle.index)
             di = minus_di.ofIdx(candle.index)
 
-            if dx.value > di.value and dx.series >= 1:
+            if dx.value > di.value and dx.series >= 1 and dx.is_speeding_up():
                 dx.markBullish()
 
-            elif di.value > dx.value and di.series >= 1:
+            elif di.value > dx.value and di.series >= 1 and dx.is_speeding_up():
                 di.markBearish()
 
     def evaluateMACD(self, candleSequence, macd, window):
@@ -1315,10 +1315,10 @@ class Strategy():
 
             indicatorValue = macd.ofIdx(candle.index)
             #if indicatorValue.value > 0 and indicatorValue.rising:
-            if indicatorValue.series > 5 or indicatorValue.value > 0 and indicatorValue.series >= 2 :
+            if indicatorValue.series > 5 or indicatorValue.value > 0 and indicatorValue.series >= 2 and indicatorValue.is_speeding_up():
                 indicatorValue.markBullish()
             #elif indicatorValue.value < 0 and indicatorValue.falling:
-            elif indicatorValue.series < -5 or indicatorValue.value < 0 and indicatorValue.series <= -2:
+            elif indicatorValue.series < -5 or indicatorValue.value < 0 and indicatorValue.series <= -2 and indicatorValue.is_speeding_up():
                 indicatorValue.markBearish()
 
     def evaluateADOSC(self, candleSequence, adosc, window):
@@ -1351,9 +1351,9 @@ class Strategy():
 
             indicatorValue = volume.ofIdx(candle.index)
 
-            if indicatorValue.value > maxOptimal and candle.green and indicatorValue.series >= 2:
+            if indicatorValue.value > maxOptimal and candle.green and indicatorValue.series >= 2 and indicatorValue.is_speeding_up():
                 indicatorValue.markBullish()
-            elif indicatorValue.value > maxOptimal and candle.red and indicatorValue.series >= 2:
+            elif indicatorValue.value > maxOptimal and candle.red and indicatorValue.series >= 2 and indicatorValue.is_speeding_up():
                 indicatorValue.markBearish()
 
             #elif indicatorValue.value < minOptimal:
@@ -1423,6 +1423,7 @@ class Strategy():
 
             lastPower = sum(self.powerCummulative[-confluence_depth:])
             lastBalance = sum(self.balanceCummulative[-confluence_depth:])
+
             avgPower = lastPower/confluence_depth
             avgBalance = lastBalance/confluence_depth
 
@@ -1472,7 +1473,7 @@ class Strategy():
         candles = self.candlesSequence
 
         HA = prepareHA(candles, 0)
-        BOILINGER = prepareBoilinger(candles, 0, 20)
+        #BOILINGER = prepareBoilinger(candles, 0, 20)
 
         longPositions = []
         shortPositions = []
@@ -1485,13 +1486,13 @@ class Strategy():
         HA.setWeight(meta_params[0])
         evaluated["candles"].append(HA)
 
-        create_stats_record("BOILINGER_WEIGHT", meta_params[15])
-        self.evaluateBoilinger(BOILINGER, candles, window)
-        BOILINGER.setWeight(meta_params[15])
-        evaluated["candles"].append(BOILINGER)
+        #create_stats_record("BOILINGER_WEIGHT", meta_params[15])
+        #self.evaluateBoilinger(BOILINGER, candles, window)
+        #BOILINGER.setWeight(meta_params[15])
+        #evaluated["candles"].append(BOILINGER)
 
         create_stats_record("SLOW_MA_PERIOD", meta_params[13])
-        create_stats_record("SLOW_MA_WEIGHT", meta_params[14])
+        create_stats_record("SLOW_MA_WEIGHT", meta_params[1])
         ma200 = MovingAverage(meta_params[13],candles,0, (49,0,100))
         ma200.setWeight(meta_params[1])
         ma200.calculate()
@@ -1516,7 +1517,7 @@ class Strategy():
         #evaluated["indicators"].append(kama)
 
 
-        create_stats_record("EMA50_PERIOD", meta_params[14])
+        create_stats_record("EMA50_PERIOD", meta_params[13]//2)
         create_stats_record("EMA50_WEIGHT", meta_params[17])
         ema50 = EMA(meta_params[13]//2, HA,0, (49+30,0+30,100+30))
         ema50.calculate()
@@ -1524,7 +1525,7 @@ class Strategy():
         #self.evaluateMA(HA, ema50, window)
         evaluated["indicators"].append(ema50)
 
-        create_stats_record("EMA30_PERIOD", meta_params[14])
+        create_stats_record("EMA30_PERIOD", meta_params[10]//2)
         create_stats_record("EMA30_WEIGHT", meta_params[17])
         ema30 = EMA(meta_params[10]//2, HA,0, (49+30,0+30,100+30))
         ema30.calculate()
@@ -1533,9 +1534,8 @@ class Strategy():
         evaluated["indicators"].append(ema30)
 
         create_stats_record("ATR_PERIOD", 14)
-        create_stats_record("ATR_WEIGHT", meta_params[3])
         atr = ATR(14, candles,1, (49,0,100))
-        atr.setWeight(meta_params[3])
+        atr.setWeight(1)
         atr.calculate()
         self.evaluateATR(candles, atr, window)
         evaluated["indicators"].append(atr)
@@ -1563,18 +1563,18 @@ class Strategy():
         #self.evaluateADOSC(candles, adosc, window)
         #evaluated["indicators"].append(adosc)
 
-        adx = ADX(14, candles, 3, (49,0,100))
-        adx.setWeight(1)
-        adx.calculate()
-        self.evaluateADX(candles, adx, window)
-        evaluated["indicators"].append(adx)
+        #adx = ADX(14, candles, 3, (49,0,100))
+        #adx.setWeight(1)
+        #adx.calculate()
+        #self.evaluateADX(candles, adx, window)
+        #evaluated["indicators"].append(adx)
 
-        create_stats_record("PLUSDI_MINUSDI_WEIGHT", meta_params[17])
+        create_stats_record("PLUSDI_MINUSDI_WEIGHT", meta_params[MT_DXDI_WEIGHT])
         plus_di = PLUS_DI(14, candles, 3, (49,0,100))
-        plus_di.setWeight(meta_params[17])
+        plus_di.setWeight(meta_params[MT_DXDI_WEIGHT])
         plus_di.calculate()
         minus_di = MINUS_DI(14, candles, 3, (49,0,100))
-        minus_di.setWeight(meta_params[17])
+        minus_di.setWeight(meta_params[MT_DXDI_WEIGHT])
         minus_di.calculate()
         self.evaluateDXDI(candles, plus_di, minus_di, window)
         evaluated["indicators"].append(minus_di)
@@ -1588,7 +1588,7 @@ class Strategy():
 
         #create_stats_record("VOLUME_WEIGHT", meta_params[9])
         volume = VOLUME(candles, 2, (49,0,100))
-        volume.setWeight(1)
+        volume.setWeight(meta_params[3])
         volume.calculate()
         self.evaluateVolume(candles,volume, window)
         evaluated["indicators"].append(volume)
@@ -1701,7 +1701,7 @@ class EVALUATOR():
         frequencyRate = (1 - (abs(self.poses - 100) / 100))*100
         #simple_log(f"PROFIT RATE {round(profitRate,3)}%")
         #totalRate = (4*winRate + 5*profitRate + 1*frequencyRate)/10
-        totalRate = (4*winRate + 6*profitRate)/10
+        totalRate = (3*winRate + 7*profitRate)/10
 
         create_stats_record("WIN_RATE", winRate)
         create_stats_record("FREQUENCY_RATE", frequencyRate)
@@ -1790,17 +1790,21 @@ class EVALUATOR():
             trailingCandle = candles.candles[trailingIndex]
             if meta_params[MT_SET_IGNORE]:
                 trailingCandle.setIgnore()
+
             within = lambda sltp, trailing: sltp >= trailing.l and sltp <= trailing.h
+
             if within(candle.TP, trailingCandle):
                 delta = abs(candle.TP - candle.c)
                 self.clean_profits += delta * self.scaleSynthetic(numPosesEx)
                 candle.hitTP = trailingIndex
                 return "TP"
+
             if within(candle.SL, trailingCandle):
                 delta = abs(candle.SL - candle.c)
                 self.clean_losses += delta * self.scaleSynthetic(numPosesEx)
                 candle.hitSL = trailingIndex
                 return "SL"
+
         return "HZ"
 
     def scaleSynthetic(self, numPosesEx):
@@ -1826,11 +1830,13 @@ class EVALUATOR():
                 if candle.isLong():
 
                     if sarValue < candle.l and meta_params[MT_SLTP_MODE] == "SAR":
-                        stopLoss = sarValue
+                        sarDelta = abs(candle.l - sarValue)
+                        stopLoss = candle.l - sarDelta * meta_params[4][0]
+                        takeProfit = candle.h + sarDelta * meta_params[4][1]
                     else:
                         stopLoss = candle.l - atrValue * meta_params[4][0]
+                        takeProfit = candle.h + atrValue * meta_params[4][1]
 
-                    takeProfit = candle.h + atrValue * meta_params[4][1]
                     candle.TP = takeProfit
                     candle.SL = stopLoss
                     # WARNING
@@ -1843,10 +1849,13 @@ class EVALUATOR():
                 elif candle.isShort():
 
                     if sarValue > candle.h and meta_params[MT_SLTP_MODE] == "SAR":
-                        stopLoss = sarValue
+                        sarDelta = abs(candle.h - sarValue)
+                        stopLoss = candle.h + sarDelta * meta_params[4][0]
+                        takeProfit = candle.l - sarDelta * meta_params[4][1]
                     else:
                         stopLoss = candle.h + atrValue * meta_params[4][0]
-                    takeProfit = candle.l - atrValue * meta_params[4][1]
+                        takeProfit = candle.l - atrValue * meta_params[4][1]
+
                     candle.TP = takeProfit
                     candle.SL = stopLoss
                     # WARNING
@@ -1855,6 +1864,7 @@ class EVALUATOR():
                         candle.TP, candle.SL = candle.SL, candle.TP
 
                     sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles), numPosesEx)
+
                 if sltp == "TP":
                     numTP += 1 * self.scaleSynthetic(numPosesEx)
                 elif sltp == "SL":

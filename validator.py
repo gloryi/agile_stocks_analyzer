@@ -484,11 +484,16 @@ s = initialize_socket()
         last_candle = last_index(sliding_window_index)
         sliding_window_index += 1
 
-        candles.append(simpleCandle(O[last_candle],
-                                    C[last_candle],
-                                    H[last_candle],
-                                    L[last_candle],
-                                    index = last_candle))
+***REMOVED***
+            candles.append(simpleCandle(O[last_candle],
+                                        C[last_candle],
+                                        H[last_candle],
+                                        L[last_candle],
+                                        index = last_candle))
+        except:
+            print(f"Unknown bug. Related candle index are: {last_candle}")
+            print(f"Extra len are: {extraLen}")
+            pass
 
     image = generateOCHLPicture(candles)
 
@@ -504,5 +509,6 @@ s = initialize_socket()
 
     feedbackCollector = {}
     break
+
 
 ***REMOVED***
