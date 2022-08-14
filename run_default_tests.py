@@ -16,6 +16,8 @@ def launch_test(TEST_MODE, TRN_MODE, PORT):
 
     print(f"Launching {TEST_MODE} test with depth of {TRN_MODE}")
 
+
+    time.sleep(2)
     validator = subprocess.Popen(["python3", os.path.join(project_path,"validator.py"),
                         TEST_MODE, str(TRN_MODE), str(PORT)])
     time.sleep(2)
@@ -25,12 +27,24 @@ def launch_test(TEST_MODE, TRN_MODE, PORT):
 
     return validator, evaluator
 
+def suspend_current(validators, evaluators):
+    for validator in validators:
+        validator.wait()
+
+    for evaluator in evaluators:
+        os.killpg(os.getpgid(evaluator.pid), signal.SIGKILL)
+
+    validators.clear()
+    evaluators.clear()
+
+
 
 
 
 try:
     TOKEN_NAME = sys.argv[1]
     TEST_MODE = sys.argv[2]
+    TEST_SET = int(sys.argv[3])
     validators = []
     evaluators = []
 
@@ -57,66 +71,62 @@ except Exception as e:
 project_path = os.getcwd()
 
 evaluation_server_plug = subprocess.Popen(["python3",
-                                           os.path.join(project_path,"validator_server_plug.py")],
+                                           os.path.join(project_path,"_validator_server_plug.py")],
                                           stdout = subprocess.DEVNULL)
 
-***REMOVED***
-##################  ORCHID TEST CASE
-***REMOVED***
 
-validator, evaluator = launch_test("ORCHID", TRN1, 7777)
-validators.append(validator)
-evaluators.append(evaluator)
-
-validator, evaluator = launch_test("ORCHID", TRN2, 7778)
-validators.append(validator)
-evaluators.append(evaluator)
+validators = []
+evaluators = []
 
 ***REMOVED***
-##################  AKMENS TEST CASE
+################## FIRST LOAD
 ***REMOVED***
+if TEST_SET == 0:
+    validator, evaluator = launch_test("ORCHID", TRN1, 7777)
+    validators.append(validator)
+    evaluators.append(evaluator)
 
-validator, evaluator = launch_test("AKMENS", TRN1, 7779)
-validators.append(validator)
-evaluators.append(evaluator)
+    validator, evaluator = launch_test("AKMENS", TRN2, 7780)
+    validators.append(validator)
+    evaluators.append(evaluator)
 
-validator, evaluator = launch_test("AKMENS", TRN2, 7780)
-validators.append(validator)
-evaluators.append(evaluator)
+    validator, evaluator = launch_test("BLAKE", TRN2, 7782)
+    validators.append(validator)
+    evaluators.append(evaluator)
 
-***REMOVED***
-##################  BLAKE TEST CASE
-***REMOVED***
-
-validator, evaluator = launch_test("BLAKE", TRN1, 7781)
-validators.append(validator)
-evaluators.append(evaluator)
-
-validator, evaluator = launch_test("BLAKE", TRN2, 7782)
-validators.append(validator)
-evaluators.append(evaluator)
-
-***REMOVED***
-##################  RANDOM TEST CASE
-***REMOVED***
-
-validator, evaluator = launch_test("R", TRN1, 7783)
-validators.append(validator)
-evaluators.append(evaluator)
-
-validator, evaluator = launch_test("R", TRN2, 7784)
-validators.append(validator)
-evaluators.append(evaluator)
+    suspend_current(validators, evaluators)
 
 
 ***REMOVED***
-################## CLEANING STARTED PROCESSES
+################## SECOND LOAD
 ***REMOVED***
+if TEST_SET == 1:
+    validator, evaluator = launch_test("AKMENS", TRN1, 7779)
+    validators.append(validator)
+    evaluators.append(evaluator)
 
-for validator in validators:
-    validator.wait()
+    validator, evaluator = launch_test("ORCHID", TRN2, 7778)
+    validators.append(validator)
+    evaluators.append(evaluator)
 
-for evaluator in evaluators:
-    os.killpg(os.getpgid(evaluator.pid), signal.SIGKILL)
+    validator, evaluator = launch_test("R", TRN2, 7784)
+    validators.append(validator)
+    evaluators.append(evaluator)
 
-os.killpg(os.getpgid(_evaluator_server_plug.pid), signal.SIGKILL)
+    suspend_current(validators, evaluators)
+
+***REMOVED***
+################## THIRD LOAD
+***REMOVED***
+if TEST_SET == 2:
+    validator, evaluator = launch_test("BLAKE", TRN1, 7781)
+    validators.append(validator)
+    evaluators.append(evaluator)
+
+    validator, evaluator = launch_test("R", TRN1, 7783)
+    validators.append(validator)
+    evaluators.append(evaluator)
+
+    suspend_current(validators, evaluators)
+
+os.killpg(os.getpgid(evaluation_server_plug.pid), signal.SIGKILL)

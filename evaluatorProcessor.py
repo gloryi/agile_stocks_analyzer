@@ -43,10 +43,11 @@ VALIDATION_MODE = False
 MA_LAG = 200
 #MA_LAG = 300
 LOG_TOLERANCE = 3
-META_SIZE = 18
 ***REMOVED***
 #VISUALISE = False
 VISUALISE = True
+LOGGING = True
+#LOGGING = False
 
 ***REMOVED***
 ***REMOVED***
@@ -119,6 +120,9 @@ def clear_stats_records():
     SIGNALS_LOG =  {}
 
 def simple_log(*message, log_level = 1):
+    if LOGGING == False:
+        print("*", end="")
+        return
     if log_level >= LOG_TOLERANCE:
         print(*message)
 
@@ -169,12 +173,14 @@ class RandomMachine():
 #=========== META PARAMETERS. SIMPLE//STUPID
 #====================================================>
 
+META_SIZE = 20
+RESERVED_META = 26
 
-meta_params = [1 for _ in range(META_SIZE)]
-meta_option = [None for _ in range(META_SIZE)]
-meta_indexes = [i for i in range(META_SIZE)]
+meta_params = [1 for _ in range(RESERVED_META)]
+meta_option = [None for _ in range(RESERVED_META)]
+meta_indexes = [i for i in range(RESERVED_META)]
 
-meta_option[0] =  lambda : RANDOM.choice([0.5, 1, 1.5])
+meta_option[0] =  lambda : RANDOM.choice([0.75, 1, 1.25])
 meta_params[0] = 1
 
 meta_option[1] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
@@ -198,11 +204,13 @@ meta_params[4] = [1.5,2]
 meta_option[5] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[5] = 1
 
-meta_option[6] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
-meta_params[6] = 1
+MT_RSI_WEIGHT = 6
+meta_option[MT_RSI_WEIGHT] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
+meta_params[MT_RSI_WEIGHT] = 1
 
-meta_option[7] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
-meta_params[7] = 1
+MT_MACD_WEIGHT = 7
+meta_option[MT_MACD_WEIGHT] = lambda : RANDOM.choice([0.5, 1, 1.5])
+meta_params[MT_MACD_WEIGHT] = 1
 
 meta_option[8] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[8] = 1
@@ -217,8 +225,9 @@ meta_option[10] =  lambda : RANDOM.randrange(30, 70,10)
 meta_params[10] = 40
 
 # RSI
-meta_option[11] = lambda : RANDOM.randrange(14, 26,3)
-meta_params[11] = 14
+MT_RSI_PERIOD = 11
+meta_option[MT_RSI_PERIOD] = lambda : RANDOM.randrange(14, 18, 2)
+meta_params[MT_RSI_PERIOD] = 14
 
 def generateHKCOMP():
     red = RANDOM.randint(2,4)
@@ -251,18 +260,89 @@ meta_option[17] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[17] = 1
 
 
-# DOMINANCE
-#meta_option[18] = [0, 1, 2]
-#meta_params[18] = 1
+#
+MT_INDICATORS_DEPTH = 18
+meta_option[MT_INDICATORS_DEPTH] = lambda : RANDOM.choice([3,4,5,6])
+meta_params[MT_INDICATORS_DEPTH] = 3
 
-# TOLERANCE
-#meta_option[19] = [1, 2]
-##meta_params[19] = 0
 
 #
-# CONFIDENCE
-#meta_option[20] = [1, 2, 3, 4, 5]
-#meta_params[20] = 3
+MT_WINDOW = 19
+meta_option[MT_WINDOW] = lambda : RANDOM.choice([0, 100, 200, 300, 400])
+meta_params[MT_WINDOW] = 300
+
+#
+MT_CONFL_DEPTH = 20
+meta_option[MT_CONFL_DEPTH] = lambda : RANDOM.choice([1,2,3,4,5])
+meta_params[MT_CONFL_DEPTH] = 3
+
+#
+MT_CONFL_TRESH = 21
+meta_option[MT_CONFL_TRESH] = lambda : RANDOM.choice([0.5, 0.6, 0.7, 0.8])
+meta_params[MT_CONFL_TRESH] = 0.7
+
+#
+MT_SLTP_MODE = 22
+meta_option[MT_SLTP_MODE] = lambda : RANDOM.choice(["ATR", "SAR"])
+meta_params[MT_SLTP_MODE] = "SAR"
+
+#
+MT_SLTP_REV = 23
+meta_option[MT_SLTP_REV] = lambda : RANDOM.choice([True, False])
+meta_params[MT_SLTP_REV] = True
+
+#MT_CHECK_ACC = 25
+#meta_option[MT_CHECK_ACC] = lambda : RANDOM.choice([True, False])
+#meta_option[MT_CHECK_ACC] = False
+
+MT_SET_IGNORE = 24
+meta_option[MT_SET_IGNORE] = lambda : RANDOM.choice([True, False])
+meta_params[MT_SET_IGNORE] = False
+
+#
+MT_SATE_MACHINE_CONF = 25
+meta_option[MT_SATE_MACHINE_CONF] = lambda : RANDOM.choice([1,2,3,4,5])
+meta_params[MT_SATE_MACHINE_CONF] = 1
+
+#MT_ = 26
+#meta_option[MT_] = lambda : RANDOM.choice([])
+#meta_option[MT_] =
+
+#MT_ = 27
+#meta_option[MT_] = lambda : RANDOM.choice([])
+#meta_option[MT_] =
+
+#MT_ = 28
+#meta_option[MT_] = lambda : RANDOM.choice([])
+#meta_option[MT_] =
+
+#MT_ = 29
+#meta_option[MT_] = lambda : RANDOM.choice([])
+#meta_option[MT_] =
+
+#MT_ = 30
+#meta_option[MT_] = lambda : RANDOM.choice([])
+#meta_option[MT_] =
+
+#MT_ = 31
+#meta_option[MT_] = lambda : RANDOM.choice([])
+#meta_option[MT_] =
+
+#MT_ = 32
+#meta_option[MT_] = lambda : RANDOM.choice([])
+#meta_option[MT_] =
+
+#MT_ = 33
+#meta_option[MT_] = lambda : RANDOM.choice([])
+#meta_option[MT_] =
+
+#MT_ = 34
+#meta_option[MT_] = lambda : RANDOM.choice([])
+#meta_option[MT_] =
+
+#MT_ = 35
+#meta_option[MT_] = lambda : RANDOM.choice([])
+#meta_option[MT_] =
 
 meta_duplicate = meta_params[:]
 
@@ -352,6 +432,11 @@ def make_image_snapshot(candles, indicators, p1, p2):
     def drawIndicatorSegment(image, zone, v1, v2, minP, maxP, p1, p2, primaryColor = None):
         i1 = v1.index-p1
         i2 = v2.index-p1
+        i_diff = i2 - i1
+        i_fit_1 = i1 + i_diff * 0.35
+        i_fit_2 = i1 + i_diff * 0.75
+
+
         col = (255,255,255)
 
         val1 = fitTozone(v1.value, minP, maxP)
@@ -364,14 +449,19 @@ def make_image_snapshot(candles, indicators, p1, p2):
         elif v2.bad or v1.bad:
             col = (0,255,255)
 
+
+
+        thickness = 2
+
+
         #if not primaryColor is None:
             #drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1-val1,(i2+0.5)/depth,primaryColor,2)
-        drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1-val2,(i2+0.5)/depth,col,3)
+        drawLineInZone(img, zone, 1-val1,(i_fit_1+0.5)/depth,1-val2,(i_fit_2+0.5)/depth,col,thickness)
 
         if v1.longEntry:
-            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,0,(i1+0.5)/depth,(0,180,0),2)
+            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,0,(i1+0.5)/depth,(0,180,0),thickness)
         if v1.shortEntry:
-            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1,(i1+0.5)/depth,(0,0,180),2)
+            drawLineInZone(img, zone, 1-val1,(i1+0.5)/depth,1,(i1+0.5)/depth,(0,0,180),thickness)
 
 
     def minMaxOfZone(candleSequences, indicatorSequences, p1, p2):
@@ -590,6 +680,11 @@ class CandleSequence():
     def __getitem__(self, key):
         return self.candles[key]
 
+#====================================================>
+#=========== INDICATORS BASE CLASSES
+#====================================================>
+# TODO change min_max_avg to cummulatives
+#====================================================>
 
 class IndicatorValue():
     def __init__(self, value, index, rising = False):
@@ -600,6 +695,9 @@ class IndicatorValue():
         self.bearish = False
         self.bullish = False
         self.bad = False
+
+        self.series = 0
+        self.avgacc = 0
 
         if not rising:
             self.rising = False
@@ -632,8 +730,11 @@ class IndicatorValue():
     def isEntry(self):
         return self.isLong() or self.isShort()
 
+    def is_speeding_up(self):
+        return self.avgacc >= 0
+
 class Indicator():
-    def __init__(self,candleSequence, section, primaryColor=None):
+    def __init__(self,candleSequence, section, primaryColor=None, depth = meta_params[MT_INDICATORS_DEPTH]):
         self.section = section
         self.candleSequence = candleSequence
         self.values = []
@@ -643,6 +744,8 @@ class Indicator():
         self.minValue = None
         self.averageValue = None
 
+        self.depth = depth
+
     def calculate(self):
         for candle in self.candleSequence.candles:
             self.add_value(IndicatorValue(candle.h, candle.index))
@@ -650,21 +753,44 @@ class Indicator():
     def setWeight(self, weight):
         self.weight = weight
 
+    def add_initial_value(self, value):
+        self.values.append(value)
+
     def add_value(self, value):
 
-        if value.value > maxValue.value or maxValue is None:
-            maxValue = value
+        series = self.values[-1].series
 
-        if value.value < minValue.value or minValue is None:
-            minValue = value
+        if value.value > self.values[-1].value and series < 0:
+            series = 0
 
-        average = (average * len(self.values) + value.value) / len(self.values)  +1
+        elif value.value < self.values[-1].value and series > 0:
+            series = 0
+
+        if value.value > self.values[-1].value:
+            series += 1
+
+        elif value.value < self.values[-1].value:
+            series -= 1
+
+        avgacc = 0
+
+        for v1, v2, v3 in zip(self.values[-1*self.depth:-2],
+                          self.values[-1*self.depth+1:-1],
+                          self.values[-1*self.depth+2:]):
+            d1 = v2.value - v1.value
+            d2 = v3.value - v2.value
+            avgacc += d2 - d1
+
+
+        avgacc /= self.depth
+
+        value.series = series
+        value.avgacc = avgacc
 
         self.values.append(value)
 
     def _toArrayIndex(self, index):
         return index  - self.values[0].index
-
 
     def ofIdx(self, idx):
         return self.values[self._toArrayIndex(idx)]
@@ -692,9 +818,16 @@ class MovingAverage(Indicator):
         super().__init__(*args, **kw)
 
     def calculate(self):
-        for index in range(self.period, len(self.candleSequence.candles)):
+
+        for index in range(self.period, self.period + meta_params[MT_INDICATORS_DEPTH]):
             average = sum([_.c for _ in self.candleSequence.ofRange(index-self.period, index)])/self.period
-            self.values.append(IndicatorValue(average, index))
+            ind_value = IndicatorValue(average, index)
+            self.add_initial_value(ind_value)
+
+        for index in range(self.period + meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            average = sum([_.c for _ in self.candleSequence.ofRange(index-self.period, index)])/self.period
+            ind_value = IndicatorValue(average, index)
+            self.add_value(ind_value)
 
 class KAMA(Indicator):
     def __init__(self, period, *args, **kw):
@@ -707,8 +840,14 @@ class KAMA(Indicator):
             arrClose.append(self.candleSequence.candles[index].c)
         arrClose = np.asarray(arrClose)
         arrKama = talibKAMA(arrClose, self.period)
-        for index in range(self.period, len(self.candleSequence.candles)):
-            self.values.append(IndicatorValue( arrKama[index], index))
+
+        for index in range(self.period, self.period + meta_params[MT_INDICATORS_DEPTH]):
+            ind_value = IndicatorValue( arrKama[index], index)
+            self.add_initial_value(ind_value)
+
+        for index in range(self.period + meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            ind_value = IndicatorValue( arrKama[index], index)
+            self.add_value(ind_value)
 
 class EMA(Indicator):
     def __init__(self, period, *args, **kw):
@@ -721,8 +860,14 @@ class EMA(Indicator):
             arrClose.append(self.candleSequence.candles[index].c)
         arrClose = np.asarray(arrClose)
         arrEma = talibEMA(arrClose, self.period)
-        for index in range(self.period, len(self.candleSequence.candles)):
-            self.values.append(IndicatorValue( arrEma[index], index))
+
+        for index in range(self.period, self.period + meta_params[MT_INDICATORS_DEPTH]):
+            ind_value = IndicatorValue( arrEma[index], index)
+            self.add_initial_value(ind_value)
+
+        for index in range(self.period + meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            ind_value = IndicatorValue( arrEma[index], index)
+            self.add_value(ind_value)
 
 class MINUS_DI(Indicator):
     def __init__(self, period, *args, **kw):
@@ -744,8 +889,14 @@ class MINUS_DI(Indicator):
         arrClose = np.asarray(arrClose)
 
         arrMINUS_DI = talibMINUS_DI(arrHigh, arrLow, arrClose, self.period)
-        for index in range(self.period, len(self.candleSequence.candles)):
-            self.values.append(IndicatorValue( arrMINUS_DI[index], index))
+
+        for index in range(self.period, self.period+meta_params[MT_INDICATORS_DEPTH]):
+            indValue = IndicatorValue( arrMINUS_DI[index], index)
+            self.add_initial_value(indValue)
+
+        for index in range(self.period+meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            indValue = IndicatorValue( arrMINUS_DI[index], index)
+            self.add_value(indValue)
 
 class PLUS_DI(Indicator):
     def __init__(self, period, *args, **kw):
@@ -767,8 +918,14 @@ class PLUS_DI(Indicator):
         arrClose = np.asarray(arrClose)
 
         arrPLUS_DI = talibPLUS_DI(arrHigh, arrLow, arrClose, self.period)
-        for index in range(self.period, len(self.candleSequence.candles)):
-            self.values.append(IndicatorValue( arrPLUS_DI[index], index))
+
+        for index in range(self.period, self.period + meta_params[MT_INDICATORS_DEPTH]):
+            indValue = IndicatorValue(arrPLUS_DI[index], index)
+            self.add_initial_value(indValue)
+
+        for index in range(self.period + meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            indValue = IndicatorValue(arrPLUS_DI[index], index)
+            self.add_value(indValue)
 
 class ADX(Indicator):
     def __init__(self, period, *args, **kw):
@@ -861,8 +1018,14 @@ class RSI(Indicator):
             arrClose.append(self.candleSequence.candles[index].c)
         arrClose = np.asarray(arrClose)
         arrRSI = talibRSI(arrClose, self.period)
-        for index in range(self.period, len(self.candleSequence.candles)):
-            self.values.append(IndicatorValue( arrRSI[index], index))
+
+        for index in range(self.period, self.period + meta_params[MT_INDICATORS_DEPTH]):
+            indValue = IndicatorValue( arrRSI[index], index)
+            self.add_initial_value(indValue)
+
+        for index in range(self.period + meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            indValue = IndicatorValue( arrRSI[index], index)
+            self.add_value(indValue)
 
 
     def maxV(self, p1, p2):
@@ -904,15 +1067,14 @@ class MACD(Indicator):
             arrClose.append(self.candleSequence.candles[index].c)
         arrClose = np.asarray(arrClose)
         macd, macdsignal, macdhist = talibMACD(arrClose, self.fastperiod, self.slowperiod, self.signalperiod)
-        for index in range(self.slowperiod, len(self.candleSequence.candles)):
 
-            rising = False
+        for index in range(self.slowperiod, self.slowperiod + meta_params[MT_INDICATORS_DEPTH]):
+            ind_value = IndicatorValue(macdhist[index]*2000, index)
+            self.add_initial_value(ind_value)
 
-            if len(self.values) > 0:
-                if self.values[-1].value < macdhist[index]:
-                    rising = True
-
-            self.values.append(IndicatorValue( macdhist[index]*2000, index, rising))
+        for index in range(self.slowperiod + meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            ind_value = IndicatorValue(macdhist[index]*2000, index)
+            self.add_value(ind_value)
 
 
 class VOLUME(Indicator):
@@ -921,8 +1083,15 @@ class VOLUME(Indicator):
 
     def calculate(self):
         arrClose = []
-        for index in range(0, len(self.candleSequence.candles)):
-            self.values.append(IndicatorValue(self.candleSequence.candles[index].v, index))
+
+        for index in range(0, meta_params[MT_INDICATORS_DEPTH]):
+            indValue = IndicatorValue(self.candleSequence.candles[index].v, index)
+            self.add_initial_value(indValue)
+
+        for index in range(meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            indValue = IndicatorValue(self.candleSequence.candles[index].v, index)
+            self.add_value(indValue)
+
 
 class CORREL(Indicator):
     def __init__(self, period, *args, **kw):
@@ -1052,10 +1221,10 @@ class Strategy():
         for candle in candleSequence.candles[window]:
 
             indicatorValue = ma.ofIdx(candle.index)
-            if candle.c > indicatorValue.value:
+            if candle.c > indicatorValue.value and indicatorValue.series >= 2 or indicatorValue.series > 5:
                 indicatorValue.markBullish()
 
-            if candle.c < indicatorValue.value:
+            if candle.c < indicatorValue.value and indicatorValue.series <= - 2 or indicatorValue.series < -5:
                 indicatorValue.markBearish()
 
     def evaluateSAR(self, candleSequence, sar, window):
@@ -1075,10 +1244,10 @@ class Strategy():
             slowMa = ma200.ofIdx(candle.index)
             fastMa = ma50.ofIdx(candle.index)
             indicatorValue = fastMa
-            if fastMa.value > slowMa.value and candle.c > fastMa.value:
+            if fastMa.value > slowMa.value and (candle.c > fastMa.value and fastMa.series >= 2 or fastMa.series > 5):
                 indicatorValue.markBullish()
 
-            if fastMa.value < slowMa.value and candle.c < fastMa.value:
+            if fastMa.value < slowMa.value and (candle.c < fastMa.value and fastMa.series <= -2 or fastMa.series < -5):
                 indicatorValue.markBearish()
 
 
@@ -1110,10 +1279,14 @@ class Strategy():
         for candle in candleSequence.candles[window]:
 
             indicatorValue = rsi.ofIdx(candle.index)
-            if indicatorValue.value < 35 and indicatorValue.value > 10:
+
+            if indicatorValue.value < 35 and indicatorValue.value > 10 and indicatorValue.series <= -2 and indicatorValue.is_speeding_up():
                 indicatorValue.markBullish()
-            elif indicatorValue.value > 65 and indicatorValue.value < 90:
+
+            elif indicatorValue.value > 65 and indicatorValue.value < 90 and indicatorValue.series >= 2 and not indicatorValue.is_speeding_up():
+
                 indicatorValue.markBearish()
+
             elif indicatorValue.value <= 10 or indicatorValue.value >= 90:
                 indicatorValue.markBad()
 
@@ -1131,10 +1304,10 @@ class Strategy():
             dx = plus_di.ofIdx(candle.index)
             di = minus_di.ofIdx(candle.index)
 
-            if dx.value > di.value:
+            if dx.value > di.value and dx.series >= 1:
                 dx.markBullish()
 
-            elif di.value > dx.value:
+            elif di.value > dx.value and di.series >= 1:
                 di.markBearish()
 
     def evaluateMACD(self, candleSequence, macd, window):
@@ -1142,10 +1315,10 @@ class Strategy():
 
             indicatorValue = macd.ofIdx(candle.index)
             #if indicatorValue.value > 0 and indicatorValue.rising:
-            if indicatorValue.value > 0:
+            if indicatorValue.series > 5 or indicatorValue.value > 0 and indicatorValue.series >= 2 :
                 indicatorValue.markBullish()
             #elif indicatorValue.value < 0 and indicatorValue.falling:
-            elif indicatorValue.value < 0:
+            elif indicatorValue.series < -5 or indicatorValue.value < 0 and indicatorValue.series <= -2:
                 indicatorValue.markBearish()
 
     def evaluateADOSC(self, candleSequence, adosc, window):
@@ -1177,12 +1350,15 @@ class Strategy():
 
 
             indicatorValue = volume.ofIdx(candle.index)
-            #if indicatorValue.value > maxOptimal and candle.green:
-                #indicatorValue.markBullish()
-            #elif indicatorValue.value > maxOptimal and candle.red:
-                #indicatorValue.markBearish()
+
+            if indicatorValue.value > maxOptimal and candle.green and indicatorValue.series >= 2:
+                indicatorValue.markBullish()
+            elif indicatorValue.value > maxOptimal and candle.red and indicatorValue.series >= 2:
+                indicatorValue.markBearish()
+
             #elif indicatorValue.value < minOptimal:
                 #indicatorValue.markBad()
+
             if indicatorValue.value < minOptimal:
                 indicatorValue.markBad()
 
@@ -1214,6 +1390,7 @@ class Strategy():
             bearishPoints = 0
             badPoints = 0
             maxPoints = 0
+            confluence_depth = meta_params[MT_CONFL_DEPTH]
 
             for candleSequence in evaluated["candles"]:
                 evaluatedCandle = candleSequence.candles[index]
@@ -1244,20 +1421,22 @@ class Strategy():
             self.balanceCummulative.append(currentBalacne)
             self.powerCummulative.append(bullishPoints + bearishPoints)
 
-            lastPower = sum(self.powerCummulative[-3:])
-            lastBalance = sum(self.balanceCummulative[-3:])
-            avgPower = lastPower/3
-            avgBalance = lastBalance/3
+            lastPower = sum(self.powerCummulative[-confluence_depth:])
+            lastBalance = sum(self.balanceCummulative[-confluence_depth:])
+            avgPower = lastPower/confluence_depth
+            avgBalance = lastBalance/confluence_depth
 
             marketState = lastBalance / lastPower if lastPower > 0 else 0
 
+            threshold = meta_params[MT_CONFL_TRESH]
+
             if badPoints > 0:
                 newState = stateMachine.are_new_state_signal("DIRTY")
-            elif marketState > 0.7 and currentBalacne > avgBalance:
+            elif marketState > threshold and currentBalacne >= avgBalance:
                 evaluated["target"][0].candles[index].markBullish()
                 newState = stateMachine.are_new_state_signal("UPTREND")
                 accepted_by_confluence +=1
-            elif marketState < -0.7 and currentBalacne < avgBalance:
+            elif marketState < -threshold and currentBalacne <= avgBalance:
                 evaluated["target"][0].candles[index].markBearish()
                 newState = stateMachine.are_new_state_signal("DOWNTREND")
                 accepted_by_confluence +=1
@@ -1361,21 +1540,21 @@ class Strategy():
         self.evaluateATR(candles, atr, window)
         evaluated["indicators"].append(atr)
 
-        #create_stats_record("RSI_PERIOD", meta_params[11])
-        #create_stats_record("RSI_WEIGHT", meta_params[6])
-        #rsi = RSI(meta_params[11],candles,3, (49,0,100))
-        #rsi.setWeight(meta_params[6])
+        #create_stats_record("RSI_PERIOD", meta_params[MT_RSI_PERIOD])
+        #create_stats_record("RSI_WEIGHT", meta_params[MT_RSI_WEIGHT])
+        #rsi = RSI(meta_params[MT_RSI_PERIOD],candles,3, (49,0,100))
+        #rsi.setWeight(meta_params[MT_RSI_WEIGHT])
         #rsi.calculate()
         #self.evaluateRSI(candles, rsi, window)
         #evaluated["indicators"].append(rsi)
 
-        create_stats_record("MACD_WEIGHT", meta_params[7])
+        create_stats_record("MACD_WEIGHT", meta_params[MT_MACD_WEIGHT])
         # I SHOULD INCLUDE DIRECTION TOO? I MEAN AS FOR ADOSC?
-        #macd = MACD(12, 26, 9,candles, 1, (49,0,100))
-        #macd.setWeight(meta_params[7])
-        #macd.calculate()
-        #self.evaluateMACD(candles, macd, window)
-        #evaluated["indicators"].append(macd)
+        macd = MACD(12, 26, 9,candles, 1, (49,0,100))
+        macd.setWeight(meta_params[MT_MACD_WEIGHT])
+        macd.calculate()
+        self.evaluateMACD(candles, macd, window)
+        evaluated["indicators"].append(macd)
 
         #create_stats_record("ADOSC_WEIGHT", meta_params[9])
         #adosc = ADOSC(3, 10, candles, 2, (49,0,100))
@@ -1416,7 +1595,7 @@ class Strategy():
 
         create_stats_record("SAR_WEIGHT", meta_params[MT_SAR_WEIGHT])
         create_stats_record("SAR_ACC", meta_params[MT_SAR_ACC])
-        sar = SAR(meta_params[MT_SAR_ACC], candles, meta_params[MT_SAR_ACC], (180, 100, 36))
+        sar = SAR(meta_params[MT_SAR_ACC], candles, 0, (180, 100, 36))
         sar.setWeight(meta_params[MT_SAR_WEIGHT])
         sar.calculate()
         self.evaluateSAR(candles, sar, window)
@@ -1471,10 +1650,10 @@ class MarketStateMachine():
             self.bearishConfidence = 0
 
 
-        if self.bullishConfidence == 2 :
+        if self.bullishConfidence == meta_params[MT_SATE_MACHINE_CONF] :
            return self.rising
 
-        elif self.bearishConfidence == 2 :
+        elif self.bearishConfidence == meta_params[MT_SATE_MACHINE_CONF] :
             return self.falling
 
         else:
@@ -1538,14 +1717,18 @@ class EVALUATOR():
         return winRate, profitRate, frequencyRate, totalRate
 
     def calculateSLTP(self, targetCandle, atr):
-        atrValue = atr.ofIdx(targetCandle.index).value
-        sl, tp = targetCandle.c, targetCandle.c
-        if targetCandle.bullish:
-            sl = targetCandle.l - atrValue * meta_params[4][0]
-            tp = targetCandle.h + atrValue * meta_params[4][1]
-        elif targetCandle.bearish:
-            sl = targetCandle.h + atrValue * meta_params[4][0]
-            tp = targetCandle.l - atrValue * meta_params[4][1]
+        if targetCandle.isEntry:
+            sl, tp = targetCandle.SL, targetCandle.TP
+        else:
+            sl, tp = targetCandle.h, targetCandle.l
+        #atrValue = atr.ofIdx(targetCandle.index).value
+        #sl, tp = targetCandle.c, targetCandle.c
+        #if targetCandle.bullish:
+            #sl = targetCandle.l - atrValue * meta_params[4][0]
+            #tp = targetCandle.h + atrValue * meta_params[4][1]
+        #elif targetCandle.bearish:
+            #sl = targetCandle.h + atrValue * meta_params[4][0]
+            #tp = targetCandle.l - atrValue * meta_params[4][1]
 
         return sl, tp
 
@@ -1592,6 +1775,11 @@ class EVALUATOR():
         atr.calculate()
         return atr
 
+    def calculateSAR(self, candles):
+        sar = SAR(0, candles, 2)
+        sar.calculate()
+        return sar
+
     def checkHitSLTP(self, candle, candles, horizon, numPosesEx):
 
         trailingIndex = candle.index
@@ -1600,7 +1788,8 @@ class EVALUATOR():
             trailingIndex += 1
             # TEST 0001 - DO NOT OVERLAP SLTP
             trailingCandle = candles.candles[trailingIndex]
-            #trailingCandle.setIgnore()
+            if meta_params[MT_SET_IGNORE]:
+                trailingCandle.setIgnore()
             within = lambda sltp, trailing: sltp >= trailing.l and sltp <= trailing.h
             if within(candle.TP, trailingCandle):
                 delta = abs(candle.TP - candle.c)
@@ -1619,7 +1808,7 @@ class EVALUATOR():
         #return numPosesEx
         return ((numPosesEx)**2)
 
-    def setSLTP(self, candleSequence, atr):
+    def setSLTP(self, candleSequence, atr, sar):
         numTP = 0
         numSL = 0
         numPoses = 0
@@ -1633,18 +1822,39 @@ class EVALUATOR():
                 numPoses += 1 * self.scaleSynthetic(numPosesEx)
                 sltp = ""
                 atrValue = atr.ofIdx(candle.index).value
+                sarValue = sar.ofIdx(candle.index).value
                 if candle.isLong():
-                   stopLoss = candle.l - atrValue * meta_params[4][0]
-                   takeProfit = candle.h + atrValue * meta_params[4][1]
-                   candle.TP = takeProfit
-                   candle.SL = stopLoss
-                   sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles), numPosesEx)
+
+                    if sarValue < candle.l and meta_params[MT_SLTP_MODE] == "SAR":
+                        stopLoss = sarValue
+                    else:
+                        stopLoss = candle.l - atrValue * meta_params[4][0]
+
+                    takeProfit = candle.h + atrValue * meta_params[4][1]
+                    candle.TP = takeProfit
+                    candle.SL = stopLoss
+                    # WARNING
+
+                    if meta_params[MT_SLTP_REV]:
+                        candle.TP, candle.SL = candle.SL, candle.TP
+
+                    sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles), numPosesEx)
+
                 elif candle.isShort():
-                   stopLoss = candle.h + atrValue * meta_params[4][0]
-                   takeProfit = candle.l - atrValue * meta_params[4][1]
-                   candle.TP = takeProfit
-                   candle.SL = stopLoss
-                   sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles), numPosesEx)
+
+                    if sarValue > candle.h and meta_params[MT_SLTP_MODE] == "SAR":
+                        stopLoss = sarValue
+                    else:
+                        stopLoss = candle.h + atrValue * meta_params[4][0]
+                    takeProfit = candle.l - atrValue * meta_params[4][1]
+                    candle.TP = takeProfit
+                    candle.SL = stopLoss
+                    # WARNING
+
+                    if meta_params[MT_SLTP_REV]:
+                        candle.TP, candle.SL = candle.SL, candle.TP
+
+                    sltp = self.checkHitSLTP(candle, candleSequence, len(candleSequence.candles), numPosesEx)
                 if sltp == "TP":
                     numTP += 1 * self.scaleSynthetic(numPosesEx)
                 elif sltp == "SL":
@@ -1718,9 +1928,13 @@ class EVALUATOR():
                 create_stats_record(sequence_name + "_DIVERGENT", 0)
             create_stats_record(sequence_name + "_ACCEPTANCE_RATE", signalingIndicator.calculate_acceptance_rate())
 
+    def apply_meta_window(self, O, C, H, L, V):
+        return O[meta_params[MT_WINDOW]:],C[meta_params[MT_WINDOW]:], H[meta_params[MT_WINDOW]:], L[meta_params[MT_WINDOW]:], V[meta_params[MT_WINDOW]:]
 
 
     def evaluate(self, O,C,H,L,V):
+
+            O, C, H, L, V = self.apply_meta_window(O, C, H, L, V)
 
             if not self.virtual:
                 simple_log("##E ", meta_params, log_level=2)
@@ -1743,7 +1957,8 @@ class EVALUATOR():
             evaluated = S.run()
 
             atr = self.calculateATR(candles)
-            numPoses, numSL, numTP = self.setSLTP(evaluated["target"][0], atr)
+            sar = self.calculateSAR(candles)
+            numPoses, numSL, numTP = self.setSLTP(evaluated["target"][0], atr, sar)
 
             self.poses = numPoses
             self.sl_total = numSL
@@ -1802,15 +2017,20 @@ class MarketProcessingPayload(Payload):
         self.optimization_target = 80
         self.optimization_criteria = self.optimization_trigger
 
+        self.lower_silence_trigger = 75
+        self.higher_silence_trigger = 101
+
         self.indexesInWork = []
 
     def get_random_meta_idx(self):
 
-        if len(self.indexesInWork) == 0:
-            self.indexesInWork = [_ for _ in range(META_SIZE)]
-            RANDOM.shuffle(self.indexesInWork)
+        #if len(self.indexesInWork) == 0:
+           #self.indexesInWork = [_ for _ in range(META_SIZE)]
+           #RANDOM.shuffle(self.indexesInWork)
 
-        return self.indexesInWork.pop()
+        return RANDOM.randint(0, META_SIZE-1)
+
+        #return self.indexesInWork.pop()
 
 
     def tryTweakMeta(self, O, C, H, L, V, tweak_major=True):
@@ -1820,7 +2040,7 @@ class MarketProcessingPayload(Payload):
         # OPTIMIZATION PRIOR TO
         # PREVIOUS 100
 
-        optimization_level = RANDOM.randint(0,  2)
+        optimization_level = RANDOM.randint(0,  3)
 
         if optimization_level >= 0:
             random_meta1 = self.get_random_meta_idx()
@@ -1848,11 +2068,11 @@ class MarketProcessingPayload(Payload):
         newTR = virtualEvaluator.total
 
         tr = self.last_tr if tweak_major else self.minor_tr
-        if newTR > tr:
+        if newTR > tr and newTR < 95:
             simple_log("**V ", meta_params, log_level=2)
             if tweak_major:
                 simple_log(f"{self.last_tr} -> {newTR}", log_level=4)
-                simple_log(f"{meta_params}", log_level=3)
+                #simple_log(f"{meta_params}", log_level=3)
                 self.prior_tr_info, self.tweaked_tr_info = self.last_tr, newTR
                 self.last_tr = newTR
                 self.optmizationApplied = True
@@ -1862,12 +2082,12 @@ class MarketProcessingPayload(Payload):
 
             return True
         else:
-            if optimization_level >= 0:
-                meta_params[random_meta1] = meta_backup1
-            if optimization_level >= 1:
-                meta_params[random_meta2] = meta_backup2
             if optimization_level >= 2:
                 meta_params[random_meta3] = meta_backup3
+            if optimization_level >= 1:
+                meta_params[random_meta2] = meta_backup2
+            if optimization_level >= 0:
+                meta_params[random_meta1] = meta_backup1
 
             return False
 
@@ -1880,7 +2100,7 @@ class MarketProcessingPayload(Payload):
         virtualEvaluator.evaluate(O, C, H, L, V)
         self.minor_tr = virtualEvaluator.total
 
-        base_case_optimizations = 2
+        base_case_optimizations = 3
         optimization_number = 0
 
         while optimization_number < base_case_optimizations:
@@ -1946,6 +2166,9 @@ class MarketProcessingPayload(Payload):
         # Kind of cooldown on node side
 
     ***REMOVED***
+            # TODO - remove. i just don't wanted to kill my
+            # laptop right now
+            #time.sleep(0.75)
             #simple_log("\n"*1, log_level=3)
             simple_log("##M ", meta_params, log_level=1)
 
@@ -1968,7 +2191,7 @@ class MarketProcessingPayload(Payload):
 
             self.last_tr = self.evaluator.total
             simple_log(f"### TR = {round(self.last_tr,2)}, NP = {self.evaluator.poses} , DELTA = {round(self.evaluator.clean_profits - self.evaluator.clean_losses,3)} /// {market_situation}", log_level=5)
-            simple_log(f"{meta_params}", log_level=5)
+            #simple_log(f"{meta_params}", log_level=5)
 
             if self.last_tr == 100:
                 self.evaluator.draw_image_ex(filename_postfix = f"TOXIC_CASE")
@@ -2027,8 +2250,18 @@ class MarketProcessingPayload(Payload):
 
             self.last_sl, self.last_tp = self.evaluator.sl_last, self.evaluator.tp_last
 
-            if self.last_tr < self.optimization_trigger:
+            if self.last_tr < self.lower_silence_trigger or self.last_tr > self.higher_silence_trigger:
+                simple_log("MUTED", log_level = 3)
                 continue
+                #simple_log("MAJOR IS RETARDED... SWITCHING TO MINOR", log_level = 3)
+                #self.swap_major_minor()
+                #self.evaluator = EVALUATOR(self.token, draw = True)
+                #self.optmizationApplied = False
+                #self.optimization_criteria = self.optimization_trigger
+                #continue
+
+            #if self.last_tr < self.optimization_trigger:
+                #continue
 
             message = self.prepare_report()
 ***REMOVED***
