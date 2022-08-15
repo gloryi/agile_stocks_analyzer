@@ -225,9 +225,9 @@ meta_option[10] =  lambda : RANDOM.randrange(30, 70,10)
 meta_params[10] = 40
 
 # RSI
-MT_RSI_PERIOD = 11
-meta_option[MT_RSI_PERIOD] = lambda : RANDOM.randrange(14, 18, 2)
-meta_params[MT_RSI_PERIOD] = 14
+MT_BOILINGER_PERIOD = 11
+meta_option[MT_BOILINGER_PERIOD] = lambda : RANDOM.randrange(16, 64, 4)
+meta_params[MT_BOILINGER_PERIOD] = 20
 
 def generateHKCOMP():
     red = RANDOM.randint(2,4)
@@ -244,7 +244,7 @@ meta_params[13] = 200
 
 # SAR ACCELERATION
 MT_SAR_ACC = 14
-meta_option[MT_SAR_ACC] = lambda : RANDOM.randrange(0, 3, 1)
+meta_option[MT_SAR_ACC] = lambda : RANDOM.uniform(0, 0.5)
 meta_params[MT_SAR_ACC] = 0
 
 # BOILINGER
@@ -1051,7 +1051,7 @@ class SAR(Indicator):
 
         arrSar = talibSAR(arrHigh, arrLow)
         for index in range(len(self.candleSequence.candles)):
-            self.values.append(IndicatorValue( arrSar[index], index))
+            self.values.append(IndicatorValue( arrSar[index], index, self.acceleration))
 
 
 class MACD(Indicator):
@@ -1473,7 +1473,7 @@ class Strategy():
         candles = self.candlesSequence
 
         HA = prepareHA(candles, 0)
-        #BOILINGER = prepareBoilinger(candles, 0, 20)
+        BOILINGER = prepareBoilinger(candles, 0, meta_params[MT_BOILINGER_PERIOD])
 
         longPositions = []
         shortPositions = []
@@ -1486,10 +1486,10 @@ class Strategy():
         HA.setWeight(meta_params[0])
         evaluated["candles"].append(HA)
 
-        #create_stats_record("BOILINGER_WEIGHT", meta_params[15])
-        #self.evaluateBoilinger(BOILINGER, candles, window)
-        #BOILINGER.setWeight(meta_params[15])
-        #evaluated["candles"].append(BOILINGER)
+        create_stats_record("BOILINGER_WEIGHT", meta_params[15])
+        self.evaluateBoilinger(BOILINGER, candles, window)
+        BOILINGER.setWeight(meta_params[15])
+        evaluated["candles"].append(BOILINGER)
 
         create_stats_record("SLOW_MA_PERIOD", meta_params[13])
         create_stats_record("SLOW_MA_WEIGHT", meta_params[1])

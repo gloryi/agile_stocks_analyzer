@@ -20,7 +20,15 @@ import numpy as np
 WINDOW_SIZE = 1000
 MAX_DEPTH = 1
 RANDOM_MODE = "R"
-
+#DATASET = "EURUSD15.csv"
+#_O, _C, _H, _L, _V = 0, 3, 1, 2, 4
+#DATASET = "USDCAD30.csv"
+#_O, _C, _H, _L, _V = 0, 1, 2, 3, 4
+# --#-- forex stratedy format are: 0 - O, 1 - H, 2 - L, 3 - C, 4 - V
+#DATASET = "GBPJPY60.csv"
+#_O, _C, _H, _L, _V = 0, 3, 1, 2, 4
+DATASET = "GBPJPY30.csv"
+_O, _C, _H, _L, _V = 0, 3, 1, 2, 4
 #====================================================>
 #===========  DRAWING AND DATA MODEL
 #====================================================>
@@ -171,18 +179,24 @@ def generateOCHLPicture(candles, _H = None, _W = None):
 # of prices with small decimal part
 #====================================================>
 
+
 def processAsset(filename = os.path.join(os.getcwd(),
                                          "ValidationDatasets",
-                                         "USDCAD30.csv")):
+                                         DATASET)):
 ***REMOVED***
     with open(filename, "r") as ochlfile:
         reader = csv.reader(ochlfile)
         for line in reader:
-            O.append(float(line[0])*100)
-            C.append(float(line[1])*100)
-            H.append(float(line[2])*100)
-            L.append(float(line[3])*100)
-            V.append(float(line[4]))
+
+            v = float(line[_V])
+            if v == 0:
+                continue
+
+            O.append(float(line[_O])*100)
+            C.append(float(line[_C])*100)
+            H.append(float(line[_H])*100)
+            L.append(float(line[_L])*100)
+            V.append(v)
 ***REMOVED***
 
 #====================================================>
@@ -478,9 +492,9 @@ s = initialize_socket()
     dump_stats(result, worstCase, bestCase, minus, plus, cleanLosses, cleanProfit, asset)
     dump_case(header, lines, asset)
 
-    extraLen = max(candles, key = lambda _ : _.sltpLine).sltpLine
+    extraLen = min(max(candles, key = lambda _ : _.sltpLine).sltpLine, len(O))
 
-    for i in range(0, extraLen):
+    for i in  range(0, min(len(O),extraLen)):
         last_candle = last_index(sliding_window_index)
         sliding_window_index += 1
 
