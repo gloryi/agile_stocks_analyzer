@@ -186,15 +186,16 @@ meta_params[0] = 1
 meta_option[1] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[1] = 1
 
-meta_option[2] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
-meta_params[2] = 1
+MT_EXPLORE_TARGET = 2
+meta_option[MT_EXPLORE_TARGET] =  lambda : RANDOM.choice([4, 8, 12, 16])
+meta_params[MT_EXPLORE_TARGET] = 1
 
 meta_option[3] =  lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[3] = 1
 
 def generateSLTP():
-    sl = RANDOM.choice([1.5, 2, 2.5, 3])
-    tp_dominance = RANDOM.choice([0.5, 1.0, 1.5, 2.0])
+    sl = RANDOM.choice([1.5, 2])
+    tp_dominance = RANDOM.choice([0.5, 1.0])
     tp = sl + tp_dominance
     return sl, tp
 
@@ -257,8 +258,9 @@ meta_option[MT_DXDI_WEIGHT] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
 meta_params[MT_DXDI_WEIGHT] = 1
 
 # EMA
-meta_option[17] = lambda : RANDOM.choice([0, 0.5, 1, 1.5, 2])
-meta_params[17] = 1
+MT_EXPLORE_SAMPLES = 17
+meta_option[MT_EXPLORE_SAMPLES] = lambda : RANDOM.choice([5, 10, 20, 30])
+meta_params[MT_EXPLORE_SAMPLES] = 10
 
 
 
@@ -270,7 +272,7 @@ meta_params[MT_INDICATORS_DEPTH] = 3
 
 MT_WINDOW = 19
 meta_option[MT_WINDOW] = lambda : RANDOM.choice([0, 100, 200, 300, 400])
-meta_params[MT_WINDOW] = 300
+meta_params[MT_WINDOW] = 0
 
 
 MT_CONFL_DEPTH = 20
@@ -287,8 +289,8 @@ meta_option[MT_SET_IGNORE] = lambda : RANDOM.choice([True, False])
 meta_params[MT_SET_IGNORE] = False
 
 MT_SLTP_REV = 23
-meta_option[MT_SLTP_REV] = lambda : RANDOM.choice([True, False])
-meta_params[MT_SLTP_REV] = True
+meta_option[MT_SLTP_REV] = lambda : RANDOM.choice([False])
+meta_params[MT_SLTP_REV] = False
 
 #MT_CHECK_ACC = 25
 #meta_option[MT_CHECK_ACC] = lambda : RANDOM.choice([True, False])
@@ -296,8 +298,8 @@ meta_params[MT_SLTP_REV] = True
 
 #
 MT_SLTP_MODE = 24
-meta_option[MT_SLTP_MODE] = lambda : RANDOM.choice(["ATR", "SAR"])
-meta_params[MT_SLTP_MODE] = "SAR"
+meta_option[MT_SLTP_MODE] = lambda : RANDOM.choice(["ATR"])
+meta_params[MT_SLTP_MODE] = "ATR"
 
 #
 MT_SATE_MACHINE_CONF = 25
@@ -635,10 +637,16 @@ class CandleSequence():
     def addCandle(self, candle):
         self.candles.append(candle)
 
+    #def ofIdx(self, idx):
+        #for candle in self.candles:
+            #if candle.index == idx:
+                #return candle
+
+    def _toArrayIndex(self, index):
+        return index  - self.candles[0].index
+
     def ofIdx(self, idx):
-        for candle in self.candles:
-            if candle.index == idx:
-                return candle
+        return self.candles[self._toArrayIndex(idx)]
 
     def maxO(self, p1, p2):
         return max(_.o for _ in filter(lambda _ : _.index >=p1 and _.index<=p2, self.candles))
@@ -697,7 +705,8 @@ class IndicatorValue():
         self.bad = False
 
         self.series = 0
-        self.avgacc = 0
+        self.delta = 0
+        self.acc = 0
 
         if not rising:
             self.rising = False
@@ -731,7 +740,7 @@ class IndicatorValue():
         return self.isLong() or self.isShort()
 
     def is_speeding_up(self):
-        return self.avgacc >= 0
+        return self.acc >= 0
 
 class Indicator():
     def __init__(self,candleSequence, section, primaryColor=None, depth = meta_params[MT_INDICATORS_DEPTH]):
@@ -743,6 +752,18 @@ class Indicator():
         self.maxValue = None
         self.minValue = None
         self.averageValue = None
+
+        self.bearish_val = 0
+        self.bullish_val = 0
+
+        self.bearish_acc = 0
+        self.bullish_acc = 0
+
+        self.bearish_speed = 0
+        self.bullish_speed = 0
+
+        self.bearish_series = 0
+        self.bullish_series = 0
 
         self.depth = depth
 
@@ -772,20 +793,29 @@ class Indicator():
         elif value.value < self.values[-1].value:
             series -= 1
 
-        avgacc = 0
+        acc = 0
 
-        for v1, v2, v3 in zip(self.values[-1*self.depth:-2],
-                          self.values[-1*self.depth+1:-1],
-                          self.values[-1*self.depth+2:]):
-            d1 = v2.value - v1.value
-            d2 = v3.value - v2.value
-            avgacc += d2 - d1
+        #for v1, v2, v3 in zip(self.values[-1*self.depth:-2],
+                          #self.values[-1*self.depth+1:-1],
+                          #self.values[-1*self.depth+2:]):
+            #d1 = v2.value - v1.value
+            #d2 = v3.value - v2.value
+            #acc += d2 - d1
 
 
-        avgacc /= self.depth
+        #acc /= (self.depth - 2)
 
-        value.series = series
-        value.avgacc = avgacc
+        v3 = value.value
+        v2 = self.values[-1].value
+        v1 = self.values[-2].value
+
+        acc = (v3 - v2) - (v2 - v1)
+
+        delta = v3 - v2
+
+        value.delta  =  delta
+        value.series =  series
+        value.acc    =  acc
 
         self.values.append(value)
 
@@ -947,8 +977,14 @@ class ADX(Indicator):
         arrClose = np.asarray(arrClose)
 
         arrADX = talibADX(arrHigh, arrLow, arrClose, self.period)
-        for index in range(self.period, len(self.candleSequence.candles)):
-            self.values.append(IndicatorValue( arrADX[index], index))
+
+        for index in range(self.period, self.period + meta_params[MT_INDICATORS_DEPTH]):
+            indValue = IndicatorValue( arrADX[index], index)
+            self.add_initial_value(indValue)
+
+        for index in range(self.period + meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            indValue = IndicatorValue( arrADX[index], index)
+            self.add_value(indValue)
 
 class ADOSC(Indicator):
     def __init__(self, fastperiod, slowperiod, *args, **kw):
@@ -974,15 +1010,14 @@ class ADOSC(Indicator):
         arrVolume = np.asarray(arrVolume)
 
         arrADOSC = talibADOSC(arrHigh, arrLow, arrClose, arrVolume, self.fastperiod, self.slowperiod)
-        for index in range(self.slowperiod, len(self.candleSequence.candles)):
 
-            rising = False
+        for index in range(self.slowperiod, self.slowperiod + meta_params[MT_INDICATORS_DEPTH]):
+            indValue = IndicatorValue( arrADOSC[index], index)
+            self.add_initial_value(indValue)
 
-            if len(self.values) > 0:
-                if self.values[-1].value < arrADOSC[index]:
-                    rising = True
-
-            self.values.append(IndicatorValue( arrADOSC[index], index, rising))
+        for index in range(self.slowperiod + meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            indValue = IndicatorValue( arrADOSC[index], index)
+            self.add_value(indValue)
 
 
 class ATR(Indicator):
@@ -1004,8 +1039,14 @@ class ATR(Indicator):
         arrLow = np.asarray(arrLow)
         arrClose = np.asarray(arrClose)
         arrATR = talibATR(arrHigh, arrLow, arrClose, self.period)
-        for index in range(self.period, len(self.candleSequence.candles)):
-            self.values.append(IndicatorValue( arrATR[index], index))
+
+        for index in range(self.period, self.period + meta_params[MT_INDICATORS_DEPTH]):
+            indValue = IndicatorValue( arrATR[index], index)
+            self.add_initial_value(indValue)
+
+        for index in range(self.period + meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            indValue = IndicatorValue( arrATR[index], index)
+            self.add_value(indValue)
 
 class RSI(Indicator):
     def __init__(self, period, *args, **kw):
@@ -1050,8 +1091,14 @@ class SAR(Indicator):
         arrLow = np.asarray(arrLow)
 
         arrSar = talibSAR(arrHigh, arrLow)
-        for index in range(len(self.candleSequence.candles)):
-            self.values.append(IndicatorValue( arrSar[index], index, self.acceleration))
+
+        for index in range(0, meta_params[MT_INDICATORS_DEPTH]):
+            ind_value = IndicatorValue(arrSar[index], index)
+            self.add_initial_value(ind_value)
+
+        for index in range(meta_params[MT_INDICATORS_DEPTH], len(self.candleSequence.candles)):
+            ind_value = IndicatorValue(arrSar[index], index)
+            self.add_value(ind_value)
 
 
 class MACD(Indicator):
@@ -1200,6 +1247,54 @@ class Strategy():
         elif self.analyzeHASequence(greenMask, False, meta_params[12][0], meta_params[12][1]):
             ha.markBearish()
 
+
+    def check_acc(self, candle_series, candle):
+        bullish = candle_series.bullish_acc
+        bearish = candle_series.bearish_acc
+
+        if abs(bullish - candle.acc) < abs(bearish - candle.acc):
+            return "BULLISH"
+
+        elif abs(bullish - candle.acc) > abs(bearish - candle.acc):
+            return "BEARISH"
+
+    def check_speed(self, candle_series, candle):
+        bullish = candle_series.bullish_speed
+        bearish = candle_series.bearish_speed
+
+        if abs(bullish - candle.delta) < abs(bearish - candle.delta):
+            return "BULLISH"
+
+        elif abs(bullish - candle.delta) > abs(bearish - candle.delta):
+            return "BEARISH"
+
+        return "UNDEFINED"
+
+    def check_value(self, candle_series, candle):
+        bullish = candle_series.bullish_val
+        bearish = candle_series.bearish_val
+
+        if abs(bullish - candle.value) < abs(bearish - candle.value):
+            return "BULLISH"
+
+        elif abs(bullish - candle.value) > abs(bearish - candle.value):
+            return "BEARISH"
+
+        return "UNDEFINED"
+
+    def check_series(self, candle_series, candle):
+        bullish = candle_series.bullish_series
+        bearish = candle_series.bearish_series
+
+        if abs(bullish - candle.series) < abs(bearish - candle.series):
+            return "BULLISH"
+
+        elif abs(bullish - candle.series) > abs(bearish - candle.series):
+            return "BEARISH"
+
+        return "UNDEFINED"
+
+
     def evaluateHA(self, haSequence, window):
         for ha in haSequence.candles[window]:
             self.checkHA( ha)
@@ -1218,13 +1313,21 @@ class Strategy():
                 boilinger.green = True
 
     def evaluateMA(self, candleSequence, ma, window):
+
         for candle in candleSequence.candles[window]:
 
             indicatorValue = ma.ofIdx(candle.index)
-            if candle.c > indicatorValue.value and indicatorValue.series >= 2 and indicatorValue.avgacc > 0 or indicatorValue.series > 5:
+
+            speed = self.check_speed(ma, indicatorValue)
+            acc = self.check_acc(ma, indicatorValue)
+            series = self.check_series(ma, indicatorValue)
+            value = self.check_value(ma, indicatorValue)
+
+
+            if candle.c > indicatorValue.value and acc == "BULLISH" and speed == "BULLISH":
                 indicatorValue.markBullish()
 
-            if candle.c < indicatorValue.value and indicatorValue.series <= - 2 and indicatorValue.avgacc > 0 or indicatorValue.series < -5:
+            if candle.c < indicatorValue.value and acc == "BULLISH" and speed == "BULLISH":
                 indicatorValue.markBearish()
 
     def evaluateSAR(self, candleSequence, sar, window):
@@ -1244,10 +1347,16 @@ class Strategy():
             slowMa = ma200.ofIdx(candle.index)
             fastMa = ma50.ofIdx(candle.index)
             indicatorValue = fastMa
-            if fastMa.value > slowMa.value and (candle.c > fastMa.value and fastMa.series >= 2 and indicatorValue.avgacc > 0  or fastMa.series > 5):
+
+            speed = self.check_speed(ma50, indicatorValue)
+            acc = self.check_acc(ma50, indicatorValue)
+            series = self.check_series(ma50, indicatorValue)
+            value = self.check_value(ma50, indicatorValue)
+
+            if fastMa.value > slowMa.value and candle.c > fastMa.value and acc == "BULLISH" and speed == "BULLISH":
                 indicatorValue.markBullish()
 
-            if fastMa.value < slowMa.value and (candle.c < fastMa.value and fastMa.series <= -2 and indicatorValue.avgacc > 0 or fastMa.series < -5):
+            if fastMa.value < slowMa.value and candle.c < fastMa.value and acc == "BEARISH" and speed == "BEARISH":
                 indicatorValue.markBearish()
 
 
@@ -1280,15 +1389,17 @@ class Strategy():
 
             indicatorValue = rsi.ofIdx(candle.index)
 
-            if indicatorValue.value < 35 and indicatorValue.value > 10 and indicatorValue.series <= -2 and not indicatorValue.is_speeding_up():
+            speed = self.check_speed(rsi, indicatorValue)
+            acc = self.check_acc(rsi, indicatorValue)
+            series = self.check_series(rsi, indicatorValue)
+            value = self.check_value(rsi, indicatorValue)
+
+            if value == "BULLISH" and acc == "BULLISH" and speed == "BULLISH":
                 indicatorValue.markBullish()
 
-            elif indicatorValue.value > 65 and indicatorValue.value < 90 and indicatorValue.series >= 2 and not indicatorValue.is_speeding_up():
-
+            elif value == "BEARISH" and acc == "BEARISH" and speed == "BEARISH":
                 indicatorValue.markBearish()
 
-            elif indicatorValue.value <= 10 or indicatorValue.value >= 90:
-                indicatorValue.markBad()
 
     def evaluateADX(self, candleSequence, adx, window):
 
@@ -1304,6 +1415,11 @@ class Strategy():
             dx = plus_di.ofIdx(candle.index)
             di = minus_di.ofIdx(candle.index)
 
+            #speed = self.check_speed(plus_di, indicatorValue)
+            #acc = self.check_acc(plus_di, indicatorValue)
+            #series = self.check_series(plus_di, indicatorValue)
+            #value = self.check_value(pluindicatorValue, indicatorValue)
+
             if dx.value > di.value and dx.series >= 1 and dx.is_speeding_up():
                 dx.markBullish()
 
@@ -1314,11 +1430,16 @@ class Strategy():
         for candle in candleSequence.candles[window]:
 
             indicatorValue = macd.ofIdx(candle.index)
-            #if indicatorValue.value > 0 and indicatorValue.rising:
-            if indicatorValue.series > 5 or indicatorValue.value > 0 and indicatorValue.series >= 2 and indicatorValue.is_speeding_up():
+
+            speed = self.check_speed(macd, indicatorValue)
+            acc = self.check_acc(macd, indicatorValue)
+            series = self.check_series(macd, indicatorValue)
+            value = self.check_value(macd, indicatorValue)
+
+            if series == "BULLISH" and acc == "BULLISH":
                 indicatorValue.markBullish()
             #elif indicatorValue.value < 0 and indicatorValue.falling:
-            elif indicatorValue.series < -5 or indicatorValue.value < 0 and indicatorValue.series <= -2 and indicatorValue.is_speeding_up():
+            elif series == "BEARISH" and acc == "BEARISH":
                 indicatorValue.markBearish()
 
     def evaluateADOSC(self, candleSequence, adosc, window):
@@ -1362,20 +1483,6 @@ class Strategy():
             if indicatorValue.value < minOptimal:
                 indicatorValue.markBad()
 
-    def evaluateCorrel(self, candleSequence, correl, window):
-
-        for candle in candleSequence.candles[window]:
-
-            indicatorValue = correl.ofIdx(candle.index)
-            #if indicatorValue.value > 5 and candle.green:
-                #indicatorValue.markBullish()
-            #elif indicatorValue.value < -5 and candle.red:
-                #indicatorValue.markBearish()
-            #elif indicatorValue.value >= -2 and indicatorValue.value <= 2:
-                #indicatorValue.markBad()
-
-            if indicatorValue.value >= -2 and indicatorValue.value <= 2:
-                indicatorValue.markBad()
 
     def checkConfluence(self, evaluated, window):
 
@@ -1466,6 +1573,124 @@ class Strategy():
         create_stats_record("STRATEGY_CONFLUENCE_ACCEPTANCE_RATE", accepted_by_confluence/emitted_entries if emitted_entries >0 else 0)
         create_stats_record("STRATEGY_CONFIDENCE_FILTERED", accepted_by_confidence/accepted_by_confluence if accepted_by_confluence > 0 else 0)
 
+    def explore_best_entries(self, window):
+
+        first_candle = self.candlesSequence.candles[MA_LAG]
+        last_candle = self.candlesSequence.candles[-1]
+
+        bearish_entries = []
+        bullish_entries = []
+
+        for i1, i2 in zip(range(first_candle.index, last_candle.index - meta_params[MT_EXPLORE_TARGET]),
+                          range(first_candle.index + meta_params[MT_EXPLORE_TARGET], last_candle.index)):
+
+            c2, c1 = self.candlesSequence.ofIdx(i2), self.candlesSequence.ofIdx(i1)
+
+            if c2.c > c1.c:
+                delta = c2.c - c1.c
+                if len(bullish_entries) > 0:
+                    if bullish_entries[-1]["index"] + 4 < i1:
+                        bullish_entries.append({"index": i1, "delta": delta})
+                    elif bullish_entries[-1]["delta"] < delta:
+                        bullish_entries[-1] = {"index": i1, "delta": delta}
+                else:
+                    bullish_entries.append({"index": i1, "delta": delta})
+
+            elif c2.c < c1.c:
+                delta = c1.c - c2.c
+                if len(bearish_entries) > 0:
+                    if bearish_entries[-1]["index"] + 4 < i1:
+                        bearish_entries.append({"index": i1, "delta": delta})
+                    elif bearish_entries[-1]["delta"] < delta:
+                        bearish_entries[-1] = {"index": i1, "delta": delta}
+                else:
+                    bearish_entries.append({"index": i1, "delta": delta})
+
+        bearish_entries.sort(key = lambda _ : _["delta"], reverse = True)
+        bullish_entries.sort(key = lambda _ : _["delta"], reverse = True)
+
+        return bullish_entries[:meta_params[MT_EXPLORE_SAMPLES]], bearish_entries[:meta_params[MT_EXPLORE_SAMPLES]]
+
+
+        #for index in range(window.start, window.stop):
+
+            #for candleSequence in evaluated["candles"]:
+                #evaluatedCandle = candleSequence.candles[index]
+
+
+    def extract_best_entries_features(self, best_bullish, best_bearish, indicators):
+
+        for indicatorSequence in indicators:
+
+            #print()
+            #print(indicatorSequence.__class__)
+
+            bullish_values = []
+            bullish_acc    = []
+            bullish_delta   = []
+            bullish_series = []
+
+            bearish_values = []
+            bearish_acc    = []
+            bearish_delta    = []
+            bearish_series = []
+
+            for bullish in best_bullish:
+                index = bullish["index"]
+
+                indic = indicatorSequence.ofIdx(index)
+
+                bullish_values.append(indic.value)
+                bullish_acc.append(indic.acc)
+                bullish_delta.append(indic.delta)
+                bullish_series.append(indic.series)
+
+            for bearish in best_bearish:
+                index = bearish["index"]
+
+                indic = indicatorSequence.ofIdx(index)
+
+                bearish_values.append(indic.value)
+                bearish_acc.append(indic.acc)
+                bearish_delta.append(indic.delta)
+                bearish_series.append(indic.series)
+
+            #print("Bullish vs Bearish")
+            #print("Values")
+            #for valbl, valbr in zip(sorted(bullish_values), sorted(bearish_values)):
+                #print(f"{valbr} || {valbl}")
+            #print("MEAN || STDDEV")
+            indicatorSequence.bearish_values = statistics.mean(bearish_values)
+            indicatorSequence.bullish_values = statistics.mean(bullish_values)
+            #print(f"{statistics.mean(bullish_values)} xXx {statistics.mean(bearish_values)}")
+            #print(f"{statistics.stdev(bullish_values)} xXx {statistics.stdev(bearish_values)}")
+
+            #print("ACC")
+            #for valbl, valbr in zip(sorted(bullish_acc), sorted(bearish_acc)):
+                #print(f"{valbr} || {valbl}")
+            #print("MEAN || STDDEV")
+            indicatorSequence.bearish_acc = statistics.mean(bearish_acc)
+            indicatorSequence.bullish_acc = statistics.mean(bullish_acc)
+            #print(f"{statistics.mean(bullish_acc)} xXx {statistics.mean(bearish_acc)}")
+            #print(f"{statistics.stdev(bullish_acc)} xXx {statistics.stdev(bearish_acc)}")
+
+            #print("SPEED")
+            #for valbl, valbr in zip(sorted(bullish_delta), sorted(bearish_delta)):
+                #print(f"{valbr} || {valbl}")
+            #print("MEAN || STDDEV")
+            indicatorSequence.bearish_speed = statistics.mean(bearish_delta)
+            indicatorSequence.bullish_speed = statistics.mean(bullish_delta)
+            #print(f"{statistics.mean(bullish_delta)} xXx {statistics.mean(bearish_delta)}")
+            #print(f"{statistics.stdev(bullish_delta)} xXx {statistics.stdev(bearish_delta)}")
+
+            #print("SERIES")
+            #for valbl, valbr in zip(sorted(bullish_series), sorted(bearish_series)):
+                #print(f"{valbr} || {valbl}")
+            #print("MEAN || STDDEV")
+            indicatorSequence.bearish_series = statistics.mean(bearish_series)
+            indicatorSequence.bullish_series = statistics.mean(bullish_series)
+            #print(f"{statistics.mean(bullish_series)} xXx {statistics.mean(bearish_series)}")
+            #print(f"{statistics.stdev(bullish_series)} xXx {statistics.stdev(bearish_series)}")
 
 
     def run(self):
@@ -1481,126 +1706,154 @@ class Strategy():
         lastCandle = len(candles)
         window = slice(MA_LAG, lastCandle)
 
-        create_stats_record("HA_WEIGHT", meta_params[0])
+        ########################
+        ########################
+
+        best_bullish, best_bearish = self.explore_best_entries(window)
+
+        for best_long in best_bullish:
+            evaluated["target"][0].ofIdx(best_long["index"]).markBullish()
+            evaluated["target"][0].ofIdx(best_long["index"]).goLong()
+
+        for best_short in best_bearish:
+            evaluated["target"][0].ofIdx(best_short["index"]).markBearish()
+            evaluated["target"][0].ofIdx(best_short["index"]).goShort()
+
+        ########################
+        ########################
+
+        #create_stats_record("HA_WEIGHT", meta_params[0])
         self.evaluateHA(HA, window)
         HA.setWeight(meta_params[0])
         evaluated["candles"].append(HA)
 
-        create_stats_record("BOILINGER_WEIGHT", meta_params[15])
+        #create_stats_record("BOILINGER_WEIGHT", meta_params[15])
         self.evaluateBoilinger(BOILINGER, candles, window)
         BOILINGER.setWeight(meta_params[15])
         evaluated["candles"].append(BOILINGER)
 
-        create_stats_record("SLOW_MA_PERIOD", meta_params[13])
-        create_stats_record("SLOW_MA_WEIGHT", meta_params[1])
+        #create_stats_record("SLOW_MA_PERIOD", meta_params[13])
+        #create_stats_record("SLOW_MA_WEIGHT", meta_params[1])
         ma200 = MovingAverage(meta_params[13],candles,0, (49,0,100))
         ma200.setWeight(meta_params[1])
         ma200.calculate()
-        self.evaluateMA(candles, ma200, window)
-        evaluated["indicators"].append(ma200)
 
-        create_stats_record("FAST_MA_PERIOD", meta_params[10])
-        create_stats_record("FASTS_SLOW_MA_CROSS_WEIGHT", meta_params[2])
+        #create_stats_record("FAST_MA_PERIOD", meta_params[10])
+        #create_stats_record("FASTS_SLOW_MA_CROSS_WEIGHT", meta_params[2])
         ma50 = MovingAverage(meta_params[10], candles,0, (49+30,10+30,10+30))
-        ma50.setWeight(meta_params[2])
+        ma50.setWeight(1)
         ma50.calculate()
-        self.evaluateMACross(candles, ma50, ma200, window)
-        evaluated["indicators"].append(ma50)
-
 
         #create_stats_record("KAMA_PERIOD", meta_params[14]*2)
         #create_stats_record("KAMA_WEIGHT", meta_params[8])
-        #kama = KAMA(meta_params[14]*2, HA,0, (49+30,0+30,100+30))
-        #kama.calculate()
-        #kama.setWeight(meta_params[8])
-        #self.evaluateMA(HA, kama, window)
-        #evaluated["indicators"].append(kama)
+        kama = KAMA(meta_params[10]//2, candles,0, (49+30,0+30,100+30))
+        kama.calculate()
+        kama.setWeight(1)
 
-
-        create_stats_record("EMA50_PERIOD", meta_params[13]//2)
-        create_stats_record("EMA50_WEIGHT", meta_params[17])
+        #create_stats_record("EMA50_PERIOD", meta_params[13]//2)
+        #create_stats_record("EMA50_WEIGHT", meta_params[17])
         ema50 = EMA(meta_params[13]//2, HA,0, (49+30,0+30,100+30))
         ema50.calculate()
-        ema50.setWeight(meta_params[17])
-        #self.evaluateMA(HA, ema50, window)
-        evaluated["indicators"].append(ema50)
+        ema50.setWeight(1)
 
-        create_stats_record("EMA30_PERIOD", meta_params[10]//2)
-        create_stats_record("EMA30_WEIGHT", meta_params[17])
+        #create_stats_record("EMA30_PERIOD", meta_params[10]//2)
+        #create_stats_record("EMA30_WEIGHT", meta_params[17])
         ema30 = EMA(meta_params[10]//2, HA,0, (49+30,0+30,100+30))
         ema30.calculate()
-        ema30.setWeight(meta_params[17])
-        self.evaluateMACross(HA, ema30, ema50, window)
-        evaluated["indicators"].append(ema30)
+        ema30.setWeight(1)
 
-        create_stats_record("ATR_PERIOD", 14)
+        #create_stats_record("ATR_PERIOD", 14)
         atr = ATR(14, candles,1, (49,0,100))
         atr.setWeight(1)
         atr.calculate()
-        self.evaluateATR(candles, atr, window)
-        evaluated["indicators"].append(atr)
 
         #create_stats_record("RSI_PERIOD", meta_params[MT_RSI_PERIOD])
         #create_stats_record("RSI_WEIGHT", meta_params[MT_RSI_WEIGHT])
-        #rsi = RSI(meta_params[MT_RSI_PERIOD],candles,3, (49,0,100))
-        #rsi.setWeight(meta_params[MT_RSI_WEIGHT])
-        #rsi.calculate()
-        #self.evaluateRSI(candles, rsi, window)
-        #evaluated["indicators"].append(rsi)
+        rsi = RSI(14,candles,3, (49,0,100))
+        rsi.setWeight(meta_params[MT_RSI_WEIGHT])
+        rsi.calculate()
 
-        create_stats_record("MACD_WEIGHT", meta_params[MT_MACD_WEIGHT])
+        #create_stats_record("MACD_WEIGHT", meta_params[MT_MACD_WEIGHT])
         # I SHOULD INCLUDE DIRECTION TOO? I MEAN AS FOR ADOSC?
         macd = MACD(12, 26, 9,candles, 1, (49,0,100))
         macd.setWeight(meta_params[MT_MACD_WEIGHT])
         macd.calculate()
-        self.evaluateMACD(candles, macd, window)
-        evaluated["indicators"].append(macd)
 
         #create_stats_record("ADOSC_WEIGHT", meta_params[9])
-        #adosc = ADOSC(3, 10, candles, 2, (49,0,100))
-        #adosc.setWeight(meta_params[9])
-        #adosc.calculate()
-        #self.evaluateADOSC(candles, adosc, window)
-        #evaluated["indicators"].append(adosc)
+        adosc = ADOSC(3, 10, candles, 2, (49,0,100))
+        adosc.setWeight(1)
+        adosc.calculate()
 
-        #adx = ADX(14, candles, 3, (49,0,100))
-        #adx.setWeight(1)
-        #adx.calculate()
-        #self.evaluateADX(candles, adx, window)
-        #evaluated["indicators"].append(adx)
+        adx = ADX(14, candles, 3, (49,0,100))
+        adx.setWeight(1)
+        adx.calculate()
 
-        create_stats_record("PLUSDI_MINUSDI_WEIGHT", meta_params[MT_DXDI_WEIGHT])
+        #create_stats_record("PLUSDI_MINUSDI_WEIGHT", meta_params[MT_DXDI_WEIGHT])
         plus_di = PLUS_DI(14, candles, 3, (49,0,100))
         plus_di.setWeight(meta_params[MT_DXDI_WEIGHT])
         plus_di.calculate()
         minus_di = MINUS_DI(14, candles, 3, (49,0,100))
         minus_di.setWeight(meta_params[MT_DXDI_WEIGHT])
         minus_di.calculate()
-        self.evaluateDXDI(candles, plus_di, minus_di, window)
-        evaluated["indicators"].append(minus_di)
-        evaluated["indicators"].append(plus_di)
-
-        #correl = CORREL(meta_params[15] ,candles, 3, (49,0,100))
-        #correl.setWeight(meta_params[8])
-        #correl.calculate()
-        #self.evaluateCorrel(candles, correl, window)
-        #evaluated["indicators"].append(correl)
 
         #create_stats_record("VOLUME_WEIGHT", meta_params[9])
         volume = VOLUME(candles, 2, (49,0,100))
         volume.setWeight(meta_params[3])
         volume.calculate()
-        self.evaluateVolume(candles,volume, window)
-        evaluated["indicators"].append(volume)
 
-        create_stats_record("SAR_WEIGHT", meta_params[MT_SAR_WEIGHT])
-        create_stats_record("SAR_ACC", meta_params[MT_SAR_ACC])
+        #create_stats_record("SAR_WEIGHT", meta_params[MT_SAR_WEIGHT])
+        #create_stats_record("SAR_ACC", meta_params[MT_SAR_ACC])
         sar = SAR(meta_params[MT_SAR_ACC], candles, 0, (180, 100, 36))
         sar.setWeight(meta_params[MT_SAR_WEIGHT])
         sar.calculate()
-        self.evaluateSAR(candles, sar, window)
-        evaluated["indicators"].append(sar)
 
+        # SLOW MA
+        evaluated["indicators"].append(ma200)
+        # FAST MA SLOW MA CROSS
+        evaluated["indicators"].append(ma50)
+        # HA SLOW EMA
+        evaluated["indicators"].append(ema50)
+        # HA SLOW FAST EMAS CROSS
+        evaluated["indicators"].append(ema30)
+        # ATR BAD VALUES FILTER
+        evaluated["indicators"].append(atr)
+        # RSI
+        evaluated["indicators"].append(rsi)
+        # MACD
+        evaluated["indicators"].append(macd)
+        # ADOSC
+        evaluated["indicators"].append(adosc)
+        # DXDI
+        evaluated["indicators"].append(minus_di)
+        evaluated["indicators"].append(plus_di)
+        # ADX
+        evaluated["indicators"].append(adx)
+        # VOLUME
+        evaluated["indicators"].append(volume)
+        # SAR
+        evaluated["indicators"].append(sar)
+        # KAMA
+        evaluated["indicators"].append(kama)
+
+        self.extract_best_entries_features(best_bullish, best_bearish, evaluated["indicators"])
+
+        self.evaluateVolume(candles,volume, window)
+        #self.evaluateADOSC(candles, adosc, window)
+
+        #self.evaluateADX(candles, adx, window)
+        self.evaluateDXDI(candles, plus_di, minus_di, window)
+
+        #self.evaluateRSI(candles, rsi, window)
+        self.evaluateATR(candles, atr, window)
+
+        self.evaluateMA(HA, ema50, window)
+        self.evaluateMA(candles, kama, window)
+        self.evaluateMA(candles, ma200, window)
+        self.evaluateMACross(candles, ma50, ma200, window)
+        self.evaluateMACross(HA, ema30, ema50, window)
+
+        self.evaluateMACD(candles, macd, window)
+        self.evaluateSAR(candles, sar, window)
 
         self.checkConfluence(evaluated, window)
 
@@ -1981,10 +2234,16 @@ class EVALUATOR():
                 return self.total/100
 
             signal_type = "USUAL"
-            if lastCandle.bullish:
-                signal_type = self.stateMachine.are_new_state_signal("UPTREND")
-            elif lastCandle.bearish:
-                signal_type = self.stateMachine.are_new_state_signal("DOWNTREND")
+
+            if lastCandle.isLong():
+                signal_type = "RISING"
+            elif lastCandle.isShort():
+                signal_type = "FALLING"
+
+            #if lastCandle.bullish:
+                #signal_type = self.stateMachine.are_new_state_signal("UPTREND")
+            #elif lastCandle.bearish:
+                #signal_type = self.stateMachine.are_new_state_signal("DOWNTREND")
 
             self.evaluatedTMP = evaluated
             self.lastCandleTMP = lastCandle
@@ -2023,11 +2282,11 @@ class MarketProcessingPayload(Payload):
         self.worst_perfomance = 200
         self.optmizationApplied = False
 
-        self.optimization_trigger = 70
-        self.optimization_target = 80
+        self.optimization_trigger = 75
+        self.optimization_target = 85
         self.optimization_criteria = self.optimization_trigger
 
-        self.lower_silence_trigger = 75
+        self.lower_silence_trigger = 80
         self.higher_silence_trigger = 101
 
         self.indexesInWork = []
@@ -2178,7 +2437,7 @@ class MarketProcessingPayload(Payload):
     ***REMOVED***
             # TODO - remove. i just don't wanted to kill my
             # laptop right now
-            #time.sleep(0.75)
+            #time.sleep(0.1)
             #simple_log("\n"*1, log_level=3)
             simple_log("##M ", meta_params, log_level=1)
 

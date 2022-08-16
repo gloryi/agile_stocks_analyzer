@@ -22,13 +22,13 @@ MAX_DEPTH = 1
 RANDOM_MODE = "R"
 #DATASET = "EURUSD15.csv"
 #_O, _C, _H, _L, _V = 0, 3, 1, 2, 4
-#DATASET = "USDCAD30.csv"
-#_O, _C, _H, _L, _V = 0, 1, 2, 3, 4
+DATASET = "USDCAD30.csv"
+_O, _C, _H, _L, _V = 0, 1, 2, 3, 4
 # --#-- forex stratedy format are: 0 - O, 1 - H, 2 - L, 3 - C, 4 - V
 #DATASET = "GBPJPY60.csv"
 #_O, _C, _H, _L, _V = 0, 3, 1, 2, 4
-DATASET = "GBPJPY30.csv"
-_O, _C, _H, _L, _V = 0, 3, 1, 2, 4
+#DATASET = "GBPJPY30.csv"
+#_O, _C, _H, _L, _V = 0, 3, 1, 2, 4
 #====================================================>
 #===========  DRAWING AND DATA MODEL
 #====================================================>
@@ -505,8 +505,8 @@ s = initialize_socket()
                                         L[last_candle],
                                         index = last_candle))
         except:
-            print(f"Unknown bug. Related candle index are: {last_candle}")
-            print(f"Extra len are: {extraLen}")
+            #print(f"Unknown bug. Related candle index are: {last_candle}")
+            #print(f"Extra len are: {extraLen}")
             pass
 
     image = generateOCHLPicture(candles)

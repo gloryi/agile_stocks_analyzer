@@ -88,11 +88,11 @@ if TEST_SET == 0:
     validators.append(validator)
     evaluators.append(evaluator)
 
-    validator, evaluator = launch_test("ORCHID", TRN1, 7777)
+    validator, evaluator = launch_test("ORCHID", TRN2, 7777)
     validators.append(validator)
     evaluators.append(evaluator)
 
-    validator, evaluator = launch_test("BLAKE", TRN1, 7781)
+    validator, evaluator = launch_test("BLAKE", TRN2, 7781)
     validators.append(validator)
     evaluators.append(evaluator)
 
@@ -107,7 +107,7 @@ if TEST_SET == 0:
 ***REMOVED***
 if TEST_SET == 1:
 
-    validator, evaluator = launch_test("ORCHID", TRN2, 7778)
+    validator, evaluator = launch_test("ORCHID", TRN1, 7778)
     validators.append(validator)
     evaluators.append(evaluator)
 
@@ -115,7 +115,7 @@ if TEST_SET == 1:
     validators.append(validator)
     evaluators.append(evaluator)
 
-    validator, evaluator = launch_test("R", TRN1, 7783)
+    validator, evaluator = launch_test("BLAKE", TRN1, 7783)
     validators.append(validator)
     evaluators.append(evaluator)
 
@@ -127,7 +127,7 @@ if TEST_SET == 1:
 ***REMOVED***
 if TEST_SET == 2:
 
-    validator, evaluator = launch_test("BLAKE", TRN2, 7782)
+    validator, evaluator = launch_test("R", TRN2, 7782)
     validators.append(validator)
     evaluators.append(evaluator)
 
