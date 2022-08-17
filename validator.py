@@ -11,6 +11,7 @@ import random
 import cv2 as cv
 import numpy as np
 ***REMOVED***
+import tqdm
 
 #====================================================>
 #=========== VALIDATOR SETTINGS
@@ -437,7 +438,7 @@ s = initialize_socket()
     candles = []
 
 
-    while last_index(sliding_window_index) < min(len(O), test_start + WINDOW_SIZE + MAX_DEPTH):
+    for sliding_window_index in tqdm.tqdm(range(test_start, min(len(O), test_start +  MAX_DEPTH))):
 
         conn, addr = s.accept()
         data = conn.recv(10000)
