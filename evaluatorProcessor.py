@@ -201,6 +201,8 @@ META_SIZE = 25
 
 meta_params = [1 for _ in range(META_SIZE)]
 meta_option = [None for _ in range(META_SIZE)]
+meta_cached = {}
+some_meta_was_cached = False
 
 MT_HA_WEIGHT = 0
 meta_option[MT_HA_WEIGHT] =  lambda : RANDOM.choice([1.25, 1.5, 1.75])
@@ -285,8 +287,8 @@ meta_params[MT_SLTP_REV] = False
 
 #
 MT_SLTP_MODE = 14
-meta_option[MT_SLTP_MODE] = lambda : RANDOM.choice(["ATR", "SAR"])
-meta_params[MT_SLTP_MODE] = "ATR"
+meta_option[MT_SLTP_MODE] = lambda : RANDOM.choice(["SNR"])
+meta_params[MT_SLTP_MODE] = "SNR"
 
 #
 MT_SATE_MACHINE_CONF = 15
@@ -1411,6 +1413,11 @@ def prepareSNR(candle_sequence, section):
 
         peaks.sort()
 
+        prev_h = 0
+        prev_l = 0
+
+        smooth = 10
+
         for candle in candle_sequence.variant_candles:
 
             candle_body = abs(candle.o - candle.c)
@@ -1434,6 +1441,13 @@ def prepareSNR(candle_sequence, section):
             else:
                 l_val = candle.l
 
+            if h_val == prev_l or l_val == prev_h:
+                if smooth >0:
+                    h_val, l_val = prev_h, prev_l
+                smooth -= 1
+
+            else:
+                smooth = 10
 
             mid_val = (h_val + l_val)/2
 
@@ -1444,6 +1458,8 @@ def prepareSNR(candle_sequence, section):
                                    0,
                                    sequence,
                                    candle.index))
+            prev_h = h_val
+            prev_l = l_val
 
             sequence.variant_candles[-1].red = False
             sequence.variant_candles[-1].green = False
@@ -1473,6 +1489,8 @@ def prepareVBSNR(candle_sequence, section):
         peaks = np.concatenate((highPeaks, minmax))
         peaks.sort()
 
+        prev_h, prev_l, smooth = 0, 0, 0
+
         for candle in candle_sequence.variant_candles:
 
             candle_body = abs(candle.o - candle.c)
@@ -1497,6 +1515,14 @@ def prepareVBSNR(candle_sequence, section):
                 l_val = candle.l
 
 
+            if h_val == prev_l or l_val == prev_h:
+                if smooth >0:
+                    h_val, l_val = prev_h, prev_l
+                smooth -= 1
+
+            else:
+                smooth = 10
+
             mid_val = (h_val + l_val)/2
 
             sequence.append(Candle(mid_val,
@@ -1506,6 +1532,8 @@ def prepareVBSNR(candle_sequence, section):
                                    0,
                                    sequence,
                                    candle.index))
+            prev_h = h_val
+            prev_l = l_val
 
             sequence.variant_candles[-1].red = False
             sequence.variant_candles[-1].green = False
@@ -2211,11 +2239,11 @@ class EVALUATOR():
 
         while trailingIndex +1 < horizon:
 
-            if trailingIndex > initialIndex + 16:
-                delta = abs(candle.SL - candle.c)
-                self.clean_losses += delta * self.scaleSynthetic(numPosesEx)
-                candle.hitSL = trailingIndex
-                return "SL"
+            #if trailingIndex > initialIndex + 16:
+                #delta = abs(candle.SL - candle.c)
+                #self.clean_losses += delta * self.scaleSynthetic(numPosesEx)
+                #candle.hitSL = trailingIndex
+                #return "SL"
 
             trailingIndex += 1
             # TEST 0001 - DO NOT OVERLAP SLTP
@@ -2244,7 +2272,7 @@ class EVALUATOR():
         return numPosesEx
         #return ((numPosesEx)**2)
 
-    def setSLTP(self, candle_sequence, atr, sar):
+    def setSLTP(self, candle_sequence, atr, sar, snr):
         numTP = 0
         numSL = 0
         numPoses = 0
@@ -2259,10 +2287,16 @@ class EVALUATOR():
                 sltp = ""
                 atrValue = atr.getValue(candle.index)
                 sarValue = sar.getValue(candle.index)
+                snrValue = snr.ofIdx(candle.index)
 
                 if candle.isLong():
 
-                    if sarValue < candle.l and meta_params[MT_SLTP_MODE] == "SAR":
+                    if meta_params[MT_SLTP_MODE] == "SNR":
+                        stopLoss = snrValue.l
+                        takeProfit = snrValue.h
+
+
+                    elif sarValue < candle.l and meta_params[MT_SLTP_MODE] == "SAR":
                         sarDelta = abs(candle.l - sarValue)
                         stopLoss = candle.l - sarDelta * meta_params[MT_SLTP][0]
                         takeProfit = candle.h + sarDelta * meta_params[MT_SLTP][1]
@@ -2281,7 +2315,11 @@ class EVALUATOR():
 
                 elif candle.isShort():
 
-                    if sarValue > candle.h and meta_params[MT_SLTP_MODE] == "SAR":
+                    if meta_params[MT_SLTP_MODE] == "SNR":
+                        stopLoss = snrValue.h
+                        takeProfit = snrValue.l
+
+                    elif sarValue > candle.h and meta_params[MT_SLTP_MODE] == "SAR":
                         sarDelta = abs(candle.h - sarValue)
                         stopLoss = candle.h + sarDelta * meta_params[MT_SLTP][0]
                         takeProfit = candle.l - sarDelta * meta_params[MT_SLTP][1]
@@ -2404,7 +2442,8 @@ class EVALUATOR():
 
             atr = self.calculateATR(variant_candles)
             sar = self.calculateSAR(variant_candles)
-            numPoses, numSL, numTP = self.setSLTP(evaluated["target"][0], atr, sar)
+            snr = prepareVBSNR(variant_candles, 0)
+            numPoses, numSL, numTP = self.setSLTP(evaluated["target"][0], atr, sar, snr)
 
             self.poses = numPoses
             self.sl_total = numSL
@@ -2593,6 +2632,9 @@ class MarketProcessingPayload(Payload):
         return data
 
     def fetch_market_data(self, feedback = None):
+
+        global some_meta_was_cached
+        some_meta_was_cached = False
 
         HOST = "127.0.0.1"
         data = {}
