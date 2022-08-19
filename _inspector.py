@@ -53,7 +53,7 @@ def find_related_file(directory, minor_build, test_case):
     target_file = []
     for _r, _d, _f in os.walk(directory):
         for f in _f:
-            if "STATS" in f:
+            if "STATS" in f and ".csv" in f:
                 if minor_build in f and test_case in f:
                     num_samples = extract_num_samples(f)
                     if num_samples > max_samples:
@@ -77,7 +77,11 @@ def process_stat_file(filename, extracted_features = defaultdict(list)):
 
         for feature_n in range(len(features_list[0])):
             header = features_list[0][feature_n]
-            extracted_features[header].append(float(features_list[value_n][feature_n]))
+    ***REMOVED***
+                extracted_features[header].append(float(features_list[value_n][feature_n]))
+    ***REMOVED***
+                #value = 1 if eval(features_list[value_n][feature_n]) else 0
+                extracted_features[header].append(0)
 
     return extracted_features
 
@@ -171,10 +175,10 @@ for feature1 in extracted_features:
 overall_correlations = list(filter(lambda _ : _.coefficient !=1,
                                     overall_correlations))
 overall_correlations.sort(key = lambda _ : _.coefficient)
-for i in range(5):
+for i in range(2):
     present_result(overall_correlations[i], extracted_features, "MAX NEGATIVE")
 #print("MAX POSITIVE CORRELATIONS")
 
 overall_correlations = overall_correlations[::-1]
-for i in range(5):
+for i in range(2):
     present_result(overall_correlations[i], extracted_features, "MAX POSITIVE")

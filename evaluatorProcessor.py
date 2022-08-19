@@ -34,6 +34,7 @@ import numpy as np
 ***REMOVED***
 import statistics
 ***REMOVED***
+import math
 
 from scipy.signal import find_peaks
 
@@ -97,6 +98,7 @@ N_BULL_DT      = 1 << 8
 N_BEAR_DT      = 1 << 9
 N_BULL_ACC     = 1 << 10
 N_BEAR_ACC     = 1 << 11
+N_TRAP         = 1 << 12
 
 #====================================================>
 #=========== SKETCH OF OOP SUPERVISER MODEL
@@ -197,12 +199,11 @@ class RandomMachine():
 #=========== META PARAMETERS. SIMPLE//STUPID
 #====================================================>
 
-META_SIZE = 25
+META_SIZE = 26
 
 meta_params = [1 for _ in range(META_SIZE)]
 meta_option = [None for _ in range(META_SIZE)]
 meta_cached = {}
-some_meta_was_cached = False
 
 MT_HA_WEIGHT = 0
 meta_option[MT_HA_WEIGHT] =  lambda : RANDOM.choice([1.25, 1.5, 1.75])
@@ -292,7 +293,7 @@ meta_params[MT_SLTP_MODE] = "SNR"
 
 #
 MT_SATE_MACHINE_CONF = 15
-meta_option[MT_SATE_MACHINE_CONF] = lambda : RANDOM.choice([1,2])
+meta_option[MT_SATE_MACHINE_CONF] = lambda : RANDOM.choice([1])
 meta_params[MT_SATE_MACHINE_CONF] = 1
 
 MT_ADX_THRESH = 16
@@ -328,8 +329,12 @@ meta_option[MT_SNR_SENSE] =  lambda : RANDOM.randrange(100, MA_LAG, 25)
 meta_params[MT_SNR_SENSE] = 100
 
 MT_THRESH_LIM = 24
-meta_option[MT_THRESH_LIM] =  lambda : RANDOM.uniform(0.1, 1)
+meta_option[MT_THRESH_LIM] =  lambda : RANDOM.uniform(0.1, 0.75)
 meta_params[MT_THRESH_LIM] = 0.5
+
+MT_RENKO_PREC = 25
+meta_option[MT_RENKO_PREC] =  lambda : RANDOM.randrange(10,20, 1)
+meta_params[MT_RENKO_PREC] = 15
 
 meta_duplicate = meta_params[:]
 
@@ -516,9 +521,12 @@ def make_image_snapshot(variant_candles, variant_indicators, p1, p2):
     forthSquare = [H/9*5.5-5,20,H/9*6.5,   W-20]
     drawSquareInZone(img, forthSquare, 0,0,1,1,(40,40,40))
     zones.append(forthSquare)
-    fivthSquare = [H/9*6.5-5,20,H,   W-20]
+    fivthSquare = [H/9*6.5-5,20,H/9*8.0,   W-20]
     drawSquareInZone(img, fivthSquare, 0,0,1,1,(15,15,15))
     zones.append(fivthSquare)
+    sixthSquare = [H/9*8.0-5,20,H,   W-20]
+    drawSquareInZone(img, sixthSquare, 0,0,1,1,(15,15,15))
+    zones.append(sixthSquare)
 
     drawLineNet(img, 75, H, W)
 
@@ -562,6 +570,7 @@ class Candle():
         self.shortEntry = False
         self.bearish = False
         self.bullish = False
+        self.trap = False
         self.bad = False
         self.sequence = sequence
         self.index = index
@@ -743,6 +752,9 @@ class Indicator():
 
         self.depth = depth
 
+        self.restored = False
+        self.recalculated = False
+
         self.setWeight()
 
     def initialize(self, num_values):
@@ -761,6 +773,48 @@ class Indicator():
 
     def prepare_variant_1_selector(self):
         return lambda : RANDOM.randrange(14, 60, 10)
+
+    def record_cache(self):
+        global meta_cached
+
+        if self.__class__.META_WEIGHT_INDEX is None or self.__class__.META_VARIANT1_INDEX is None:
+            return False
+
+        meta_cached[f"{self.__class__}_{meta_params[self.__class__.META_WEIGHT_INDEX]}_{meta_params[self.__class__.META_VARIANT1_INDEX]}_{meta_params[MT_WINDOW]}"] = self
+
+
+    def try_restore_simple_cached(self):
+
+        if self.__class__.META_WEIGHT_INDEX is None or self.__class__.META_VARIANT1_INDEX is None:
+            return False
+
+        global meta_cached
+
+        if f"{self.__class__}_{meta_params[self.__class__.META_WEIGHT_INDEX]}_{meta_params[self.__class__.META_VARIANT1_INDEX]}_{meta_params[MT_WINDOW]}" in meta_cached:
+            cached = meta_cached[f"{self.__class__}_{meta_params[self.__class__.META_WEIGHT_INDEX]}_{meta_params[self.__class__.META_VARIANT1_INDEX]}_{meta_params[MT_WINDOW]}"]
+
+            self.weight = cached.weight
+            self.variable_1 = cached.variable_1
+
+            self.maxValue = cached.maxValue
+            self.minValue = cached.minValue
+            self.averageValue = cached.averageValue
+
+            self.initial_idx = cached.initial_idx
+            self.num_values = cached.num_values
+
+            self.values = cached.values
+            self.state = cached.state
+
+            self.delta = cached.delta
+            self.acc = cached.acc
+
+            self.depth = cached.depth
+
+            self.restored = True
+
+            return True
+        return False
 
 
     def resolve_meta_weight(self):
@@ -818,6 +872,9 @@ class Indicator():
 
     def isShort(self, idx):
         return self.state[idx] & N_SHORT
+
+    def isTrap(self, idx):
+        return self.state[idx] & N_TRAP
 
     def isEntry(self, idx):
         return self.isLong(idx) or self.isShort(idx)
@@ -948,6 +1005,9 @@ class MovingAverage(Indicator):
 
     def calculate(self):
 
+        if self.try_restore_simple_cached():
+            return
+
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
             arrClose.append(self.candle_sequence.variant_candles[index].c)
@@ -965,6 +1025,10 @@ class KAMA(Indicator):
         return lambda : RANDOM.randrange(10, 150, 10)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
             arrClose.append(self.candle_sequence.variant_candles[index].c)
@@ -972,6 +1036,7 @@ class KAMA(Indicator):
 
         self.values = talibKAMA(arrClose, self.resolve_variable_1())
         self.calculate_dynamics()
+
 
 class EMA(Indicator):
     def __init__(self, *args, **kw):
@@ -981,6 +1046,10 @@ class EMA(Indicator):
         return lambda : RANDOM.randrange(10, 50, 10)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
             arrClose.append(self.candle_sequence.variant_candles[index].c)
@@ -997,6 +1066,10 @@ class DEMA(Indicator):
         return lambda : RANDOM.randrange(10, 50, 10)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
             arrClose.append(self.candle_sequence.variant_candles[index].c)
@@ -1010,6 +1083,10 @@ class HILBERT(Indicator):
         super().__init__(*args, **kw)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrClose = []
 
         for index in range(0, len(self.candle_sequence.variant_candles)):
@@ -1026,6 +1103,9 @@ class MAMA(Indicator):
 
     def calculate(self):
 
+        if self.try_restore_simple_cached():
+            return
+
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
             arrClose.append(self.candle_sequence.variant_candles[index].c)
@@ -1039,6 +1119,9 @@ class FAMA(Indicator):
         super().__init__(*args, **kw)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
 
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
@@ -1056,6 +1139,10 @@ class MIDPOINT(Indicator):
         return lambda : RANDOM.randrange(8, 128, 8)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
             arrClose.append(self.candle_sequence.variant_candles[index].c)
@@ -1072,6 +1159,10 @@ class MIDPRICE(Indicator):
         return lambda : RANDOM.randrange(8, 128, 8)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrHigh = []
         arrLow = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
@@ -1092,6 +1183,10 @@ class TEMA(Indicator):
         return lambda : RANDOM.randrange(40, 100, 10)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
             arrClose.append(self.candle_sequence.variant_candles[index].c)
@@ -1108,6 +1203,10 @@ class TRIMA(Indicator):
         return lambda : RANDOM.randrange(80, 120, 10)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
             arrClose.append(self.candle_sequence.variant_candles[index].c)
@@ -1124,6 +1223,10 @@ class WMA(Indicator):
         return lambda : RANDOM.randrange(140, 180, 20)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
             arrClose.append(self.candle_sequence.variant_candles[index].c)
@@ -1140,6 +1243,10 @@ class MINUS_DI(Indicator):
         return lambda : RANDOM.randrange(7, 30, 1)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrHigh = []
         arrLow = []
         arrClose = []
@@ -1164,6 +1271,10 @@ class PLUS_DI(Indicator):
         return lambda : RANDOM.randrange(7, 30, 1)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrHigh = []
         arrLow = []
         arrClose = []
@@ -1188,6 +1299,10 @@ class ADX(Indicator):
         return lambda : RANDOM.randrange(7, 30, 1)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrHigh = []
         arrLow = []
         arrClose = []
@@ -1211,6 +1326,7 @@ class ADOSC(Indicator):
         super().__init__(*args, **kw)
 
     def calculate(self):
+
         arrHigh = []
         arrLow = []
         arrClose = []
@@ -1239,6 +1355,10 @@ class ATR(Indicator):
         return lambda : RANDOM.randrange(8, 26, 1)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         atrPrev = None
         atr = None
         arrHigh = []
@@ -1256,6 +1376,92 @@ class ATR(Indicator):
 
         self.calculate_dynamics()
 
+class Supertrend(Indicator):
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+
+    def prepare_variant_1_selector(self):
+        return lambda : 3#RANDOM.randrange(2, 4, 1)
+
+    def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
+        arrHigh = []
+        arrLow = []
+        arrClose = []
+
+        for index in range(0, len(self.candle_sequence.variant_candles)):
+            arrHigh.append(self.candle_sequence.variant_candles[index].h)
+            arrLow.append(self.candle_sequence.variant_candles[index].l)
+            arrClose.append(self.candle_sequence.variant_candles[index].c)
+
+        arrHigh = np.asarray(arrHigh)
+        arrLow = np.asarray(arrLow)
+        arrClose = np.asarray(arrClose)
+
+        ATR_PERIOD = 10
+
+        atr_values = talibATR(arrHigh, arrLow, arrClose, ATR_PERIOD)
+        hla_values = (arrHigh + arrLow)/2
+
+        basic_upper_band = hla_values + (self.resolve_variable_1() * atr_values)
+        basic_lower_band = hla_values - (self.resolve_variable_1() * atr_values)
+
+        final_upper_band = []
+        final_lower_band = []
+        super_trend = []
+        for i in range(ATR_PERIOD):
+
+            final_upper_band.append(arrClose[i])
+            final_lower_band.append(arrClose[i])
+            super_trend.append(arrClose[i])
+
+        for index in range(ATR_PERIOD, len(self.candle_sequence.variant_candles)):
+
+            if basic_upper_band[index] != basic_upper_band[index] or basic_lower_band[index] != basic_lower_band[index]:
+                final_upper_band.append(arrClose[index])
+                final_lower_band.append(arrClose[index])
+                super_trend.append(arrClose[index])
+
+            if basic_upper_band[index] < final_upper_band[index-1] or arrClose[index-1] > final_upper_band[index-1]:
+                final_upper_band.append(basic_upper_band[index])
+            else:
+                final_upper_band.append(final_upper_band[index-1])
+
+            if basic_lower_band[index] > final_lower_band[index-1] or arrClose[index-1] < final_lower_band[index-1]:
+                final_lower_band.append(basic_lower_band[index])
+            else:
+                final_lower_band.append(final_lower_band[index-1])
+
+
+            #print("---"*10)
+            #print(arrClose[:index+1])
+            #print(basic_upper_band[:index+1])
+            #print(basic_lower_band[:index+1])
+            #print(final_upper_band)
+            #print(final_lower_band)
+            #print(super_trend)
+            if super_trend[index-1] == final_upper_band[index-1] and arrClose[index] <= final_upper_band[index]:
+                super_trend.append(final_upper_band[index])
+
+            elif super_trend[index-1] == final_upper_band[index-1] and arrClose[index] >= final_upper_band[index]:
+                super_trend.append(final_lower_band[index])
+
+            elif super_trend[index-1] == final_lower_band[index-1] and arrClose[index] >= final_lower_band[index]:
+                super_trend.append(final_lower_band[index])
+
+            elif super_trend[index-1] == final_lower_band[index-1] and arrClose[index] <= final_lower_band[index]:
+                super_trend.append(final_upper_band[index])
+
+        self.values = np.asarray(super_trend)
+
+
+
+
+        self.calculate_dynamics()
+
 class RSI(Indicator):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
@@ -1264,6 +1470,10 @@ class RSI(Indicator):
         return lambda : RANDOM.randrange(10, 25, 1)
 
     def calculate(self):
+
+        if self.try_restore_simple_cached():
+            return
+
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
             arrClose.append(self.candle_sequence.variant_candles[index].c)
@@ -1279,6 +1489,7 @@ class SAR(Indicator):
         super().__init__(*args, **kw)
 
     def calculate(self):
+
         arrHigh = []
         arrLow = []
 
@@ -1301,6 +1512,7 @@ class MACD(Indicator):
         super().__init__(*args, **kw)
 
     def calculate(self):
+
         arrClose = []
         for index in range(0, len(self.candle_sequence.variant_candles)):
             arrClose.append(self.candle_sequence.variant_candles[index].c)
@@ -1342,23 +1554,61 @@ def calculateHA(prev, current, sequence, multiplier = 1):
     return Candle(hO, hC, hH, hL, hV, sequence, len(sequence.variant_candles))
 
 def prepareHA(variant_candles, section):
-    MULTIPLIER = 0.98
     sequence = CandleSequence(section)
 
-    sequence.append(Candle(variant_candles[0].o*MULTIPLIER,
-                           variant_candles[0].c*MULTIPLIER,
-                           variant_candles[0].h*MULTIPLIER,
-                           variant_candles[0].l*MULTIPLIER,
+    sequence.append(Candle(variant_candles[0].o,
+                           variant_candles[0].c,
+                           variant_candles[0].h,
+                           variant_candles[0].l,
                            variant_candles[0].v,
                            sequence,0))
 
     for prevCandle, currentCandle in zip(variant_candles[:-1], variant_candles[1:]):
-        haCandle = calculateHA(prevCandle, currentCandle, sequence, MULTIPLIER)
+        haCandle = calculateHA(prevCandle, currentCandle, sequence, 1.0)
         sequence.append(haCandle)
     sequence.cache_values()
     return sequence
 
+def prepareRekno(variant_candles, section):
+    sequence = CandleSequence(section)
+
+
+    # META PARAM
+    basic_price = (variant_candles.h_cached.max() - variant_candles.l_cached.min())/meta_params[MT_RENKO_PREC]
+
+    prev_o, prev_c = math.floor(((variant_candles[0].h+variant_candles[0].l) / 2) / basic_price), math.ceil(((variant_candles[0].h+variant_candles[0].l) / 2) / basic_price)
+
+    for i, candle in enumerate(variant_candles):
+        renko_index = ((candle.h+candle.l) / 2) / basic_price
+
+        lower_renko = math.floor(renko_index)
+        upper_renko = math.ceil(renko_index)
+
+        if (prev_c == lower_renko and prev_o == upper_renko) or (prev_o == lower_renko and prev_c == upper_renko):
+            o, c = prev_o, prev_c
+        elif lower_renko >= prev_o:
+            o, c = lower_renko, upper_renko
+        elif upper_renko <= prev_c:
+            o, c = upper_renko, lower_renko
+        else:
+            o, c = lower_renko, upper_renko
+
+        sequence.append(Candle(o, c, upper_renko, lower_renko, candle.v, sequence, candle.index))
+
+        prev_o = o
+        prev_c = c
+
+    sequence.cache_values()
+
+    return sequence
+
+
 def prepareBoilinger(variant_candles, section, period):
+
+        global meta_cached
+
+        if f"BOILINGER{meta_params[MT_BOILINGER_PERIOD]}_{meta_params[MT_WINDOW]}" in meta_cached:
+            return meta_cached[f"BOILINGER{meta_params[MT_BOILINGER_PERIOD]}_{meta_params[MT_WINDOW]}"]
 
         sequence = CandleSequence(section)
 
@@ -1390,9 +1640,16 @@ def prepareBoilinger(variant_candles, section, period):
             sequence.variant_candles[-1].channel = True
 
         sequence.cache_values()
+        meta_cached[f"BOILINGER{meta_params[MT_BOILINGER_PERIOD]}_{meta_params[MT_WINDOW]}"] = sequence
+
         return sequence
 
 def prepareSNR(candle_sequence, section):
+
+        global meta_cached
+
+        if f"SNR{meta_params[MT_SNR_SENSE]}_{meta_params[MT_WINDOW]}" in meta_cached:
+            return meta_cached[f"SNR{meta_params[MT_SNR_SENSE]}_{meta_params[MT_WINDOW]}"]
 
         sequence = CandleSequence(section)
 
@@ -1466,9 +1723,17 @@ def prepareSNR(candle_sequence, section):
             sequence.variant_candles[-1].channel = True
 
         sequence.cache_values()
+        meta_cached[f"SNR{meta_params[MT_SNR_SENSE]}_{meta_params[MT_WINDOW]}" ] = sequence
+
         return sequence
 
 def prepareVBSNR(candle_sequence, section):
+
+        global meta_cached
+
+        if f"VBSNR{meta_params[MT_VSNR_SENSE]}_{meta_params[MT_WINDOW]}" in meta_cached:
+            return meta_cached[f"VBSNR{meta_params[MT_VSNR_SENSE]}_{meta_params[MT_WINDOW]}"]
+
 
         sequence = CandleSequence(section)
 
@@ -1541,8 +1806,9 @@ def prepareVBSNR(candle_sequence, section):
 
 
 
-
         sequence.cache_values()
+        meta_cached[f"VBSNR{meta_params[MT_VSNR_SENSE]}_{meta_params[MT_WINDOW]}" ] = sequence
+
         return sequence
 
 
@@ -1581,6 +1847,14 @@ class Strategy():
     def evaluateHA(self, haSequence, window):
         for ha in haSequence.variant_candles[window]:
             self.checkHA( ha)
+
+    def evaluateRenko(self, renko, window):
+
+        for rk in renko.variant_candles[window]:
+            if rk.green:
+                rk.markBullish()
+            else:
+                rk.markBearish()
 
     def evaluateBoilinger(self, boilingers, variant_candles, window):
         prevGreen = False
@@ -1648,13 +1922,31 @@ class Strategy():
 
     def evaluateMA(self, candle_sequence, ma):
 
+        if ma.restored:
+            return
+
         close_array = candle_sequence.c_cached
 
 
         #ma.state[(close_array > ma.values) * (ma.state & N_BULL_ACC)*( ma.state & N_BULL_DT)] |= N_BULLISH
         #ma.state[(close_array > ma.values) * (ma.state & N_BULL_ACC)*( ma.state & N_BULL_DT)] |= N_BULLISH
-        ma.state[np.logical_and((close_array > ma.values) , (ma.delta > 0) )] |= N_BULLISH
-        ma.state[np.logical_and((close_array < ma.values) , (ma.delta < 0) )] |= N_BEARISH
+        ma.state[np.logical_and((close_array > ma.values) , (ma.delta > 0), (ma.acc >0) )] |= N_BULLISH
+        ma.state[np.logical_and((close_array < ma.values) , (ma.delta < 0), (ma.acc >0) )] |= N_BEARISH
+
+        ma.record_cache()
+
+    def evaluateSuperTrend(self, candle_sequence, supertrend):
+
+        if supertrend.restored:
+            return
+
+        close_array = candle_sequence.c_cached
+
+
+        supertrend.state[(close_array > supertrend.values)] |= N_BULLISH
+        supertrend.state[(close_array < supertrend.values)] |= N_BEARISH
+
+        supertrend.record_cache()
 
     def evaluateSAR(self, candle_sequence, sar):
 
@@ -1665,39 +1957,67 @@ class Strategy():
 
     def evaluateMACross(self, candle_sequence, fastMa, slowMa):
 
+        if slowMa.restored or fastMa.restored:
+            return
+
         close_array = candle_sequence.c_cached
 
         fastMa.state[np.logical_and((fastMa.values > slowMa.values), (fastMa.delta > 0))] |= N_BULLISH
         fastMa.state[np.logical_and((fastMa.values < slowMa.values), (fastMa.delta < 0))] |= N_BEARISH
 
+        slowMa.record_cache()
+        fastMa.record_cache()
+
 
 
     def evaluateATR(self, candle_sequence, atr):
 
-        ref_idx = meta_params[MT_ATR_THRESH]%len(atr.values)
-        threshold = atr.getValue(ref_idx)
-        threshold1 = atr.minAbs() + threshold * meta_params[MT_THRESH_LIM]
-        threshold2 = atr.maxAbs() - threshold * meta_params[MT_THRESH_LIM]
+        if atr.restored:
+            return
 
-        atr.state[(atr.values < threshold1)] |= N_BAD
+        #ref_idx = meta_params[MT_ATR_THRESH]%len(atr.values)
+        #threshold = atr.getValue(ref_idx)
+        #threshold1 = atr.minAbs() + threshold * meta_params[MT_THRESH_LIM]
+        #threshold2 = atr.maxAbs() - threshold * meta_params[MT_THRESH_LIM]
+
+        #atr.state[(atr.values < threshold1)] |= N_BAD
+        atr.state[(atr.acc > 0)] |= N_BAD
+
+        #atr.record_cache()
 
     def evaluateRSI(self, candle_sequence, rsi):
+
+        if rsi.restored:
+            return
 
         rsi.state[np.logical_and((rsi.values < 30) , (rsi.delta > 0))] |= N_BULLISH
         rsi.state[np.logical_and((rsi.values > 70) , (rsi.delta < 0))] |= N_BEARISH
 
+        rsi.record_cache()
+
 
     def evaluateADX(self, candle_sequence, adx):
 
+        if adx.restored:
+            return
+
         adx.state[adx.values < meta_params[MT_ADX_THRESH]] |= N_BAD
+
+        adx.record_cache()
 
 
     def evaluateDXDI(self, candle_sequence, plus_di, minus_di):
 
+        if plus_di.restored and minus_di.restored:
+            return
+
         #plus_di.state[(plus_di.values > minus_di.values)* (plus_di.state & N_BULL_DT)* (plus_di.state & N_BULL_ACC)] |= N_BULLISH
         #minus_di.state[(minus_di.values > plus_di.values)*( minus_di.state & N_BULL_DT)* (minus_di.state & N_BULL_ACC)] |= N_BULLISH
-        plus_di.state[np.logical_and((plus_di.values > minus_di.values),(plus_di.delta > 0))] |= N_BULLISH
-        minus_di.state[np.logical_and((minus_di.values > plus_di.values),(minus_di.delta > 0))] |= N_BEARISH
+        plus_di.state[np.logical_and((plus_di.values > minus_di.values),(plus_di.delta > 0), (plus_di.acc < 0))] |= N_BULLISH
+        minus_di.state[np.logical_and((minus_di.values > plus_di.values),(minus_di.delta > 0), (minus_di.acc < 0))] |= N_BEARISH
+
+        plus_di.record_cache()
+        minus_di.record_cache()
 
     def evaluateMACD(self, candle_sequence, macd):
 
@@ -1757,6 +2077,9 @@ class Strategy():
                 if indicator.isBad(index):
                     badPoints += 1
 
+                if indicator.isTrap(index):
+                    evaluated["target"][0].variant_candles[index].trap = True
+
             newState = "USUAL"
             currentBalacne = bullishPoints - bearishPoints
             if currentBalacne !=0:
@@ -1803,11 +2126,11 @@ class Strategy():
                     if indicator.isBearish(index):
                         indicator.goShort(index)
 
-        create_state_record("STRATEGY_EMMITED", emitted_entries)
-        create_state_record("STRATEGY_CONFLUENCE_FILTERED", accepted_by_confluence)
-        create_state_record("STRATEGY_CONFIDENCE_FILTERED", accepted_by_confidence)
-        create_state_record("STRATEGY_CONFLUENCE_ACCEPTANCE_RATE", accepted_by_confluence/emitted_entries if emitted_entries >0 else 0)
-        create_state_record("STRATEGY_CONFIDENCE_FILTERED", accepted_by_confidence/accepted_by_confluence if accepted_by_confluence > 0 else 0)
+        #create_state_record("STRATEGY_EMMITED", emitted_entries)
+        #create_state_record("STRATEGY_CONFLUENCE_FILTERED", accepted_by_confluence)
+        #create_state_record("STRATEGY_CONFIDENCE_FILTERED", accepted_by_confidence)
+        #create_state_record("STRATEGY_CONFLUENCE_ACCEPTANCE_RATE", accepted_by_confluence/emitted_entries if emitted_entries >0 else 0)
+        #create_state_record("STRATEGY_CONFIDENCE_FILTERED", accepted_by_confidence/accepted_by_confluence if accepted_by_confluence > 0 else 0)
 
     def explore_best_entries(self):
 
@@ -1912,6 +2235,7 @@ class Strategy():
 
         HA = prepareHA(variant_candles, 4)
         BOILINGER = prepareBoilinger(variant_candles, 0, meta_params[MT_BOILINGER_PERIOD])
+        RENKO = prepareRekno(variant_candles, 5)
         SNR = prepareSNR(HA, 4)
         VBSNR = prepareVBSNR(variant_candles, 0)
 
@@ -1921,6 +2245,9 @@ class Strategy():
         lastCandle = len(variant_candles)
         window = slice(MA_LAG, lastCandle)
 
+        #self.evaluateRenko(RENKO, window)
+        RENKO.setWeight(1)
+        evaluated["variant_candles"].append(RENKO)
 
         self.evaluateHA(HA, window)
         HA.setWeight(meta_params[MT_HA_WEIGHT])
@@ -1947,17 +2274,12 @@ class Strategy():
         ema = EMA(HA,4, (49+30,0+30,100+30))
         ema.calculate()
 
-        #create_state_record("ATR_PERIOD", 14)
         atr = ATR(variant_candles,1, (49,0,100))
         atr.calculate()
 
-        #create_state_record("RSI_PERIOD", meta_params[MT_RSI_PERIOD])
-        #create_state_record("RSI_WEIGHT", meta_params[MT_RSI_WEIGHT])
         rsi = RSI(variant_candles,3, (49,0,100))
         rsi.calculate()
 
-        #create_state_record("MACD_WEIGHT", meta_params[MT_MACD_WEIGHT])
-        # I SHOULD INCLUDE DIRECTION TOO? I MEAN AS FOR ADOSC?
         macd = MACD(12, 26, 9,variant_candles, 1, (49,0,100))
         macd.calculate()
 
@@ -1968,7 +2290,6 @@ class Strategy():
         adx = ADX(variant_candles, 3, (49,0,100))
         adx.calculate()
 
-        #create_state_record("PLUSDI_MINUSDI_WEIGHT", meta_params[MT_DXDI_WEIGHT])
         plus_di = PLUS_DI(variant_candles, 3, (49,0,100))
         plus_di.calculate()
         minus_di = MINUS_DI(variant_candles, 3, (49,0,100))
@@ -1977,13 +2298,11 @@ class Strategy():
         volume = VOLUME(variant_candles, 2, (49,0,100))
         volume.calculate()
 
-        #create_state_record("SAR_WEIGHT", meta_params[MT_SAR_WEIGHT])
-        #create_state_record("SAR_ACC", meta_params[MT_SAR_ACC])
         sar = SAR(meta_params[MT_SAR_ACC], variant_candles, 0, (180, 100, 36))
         sar.calculate()
 
-        dema = DEMA(HA, 4, (180, 100, 36))
-        dema.calculate()
+        #dema = DEMA(HA, 4, (180, 100, 36))
+        #dema.calculate()
 
         #hilbert = HILBERT(HA, 4, (180, 100, 36))
         #hilbert.calculate()
@@ -2009,6 +2328,9 @@ class Strategy():
         #wma = WMA(variant_candles, 0, (180, 100, 36))
         #wma.calculate()
 
+        supertrend = Supertrend(variant_candles, 0, (50,50,50))
+        supertrend.calculate()
+
         #evaluated["variant_indicators"].append(hilbert)
         evaluated["variant_indicators"].append(ma200)
         evaluated["variant_indicators"].append(mama)
@@ -2021,7 +2343,7 @@ class Strategy():
 
         evaluated["variant_indicators"].append(trima)
         evaluated["variant_indicators"].append(ema)
-        evaluated["variant_indicators"].append(dema)
+        #evaluated["variant_indicators"].append(dema)
         #evaluated["variant_indicators"].append(tema)
 
         evaluated["variant_indicators"].append(atr)
@@ -2034,13 +2356,14 @@ class Strategy():
 
         evaluated["variant_indicators"].append(volume)
         evaluated["variant_indicators"].append(sar)
+        evaluated["variant_indicators"].append(supertrend)
 
         #self.evaluateMA(variant_candles, midpoint)
         #self.evaluateMA(HA, midpoint)
 
         #self.evaluateMA(HA, wma)
         self.evaluateMA(HA, trima)
-        self.evaluateMACross(HA, dema, ema)
+        self.evaluateMACross(HA, ema, trima)
 
         self.evaluateVolume(variant_candles,volume)
         #self.evaluateADOSC(variant_candles, adosc, window)
@@ -2055,9 +2378,10 @@ class Strategy():
         self.evaluateMA(variant_candles, ma200)
         self.evaluateMACross(variant_candles, mama, fama)
 
-
         self.evaluateMACD(variant_candles, macd)
         self.evaluateSAR(variant_candles, sar)
+
+        self.evaluateSuperTrend(variant_candles, supertrend)
 
         self.checkConfluence(evaluated, window)
 
@@ -2160,10 +2484,10 @@ class EVALUATOR():
         #totalRate = (4*winRate + 5*profitRate + 1*frequencyRate)/10
         totalRate = (3*winRate + 7*profitRate)/10
 
-        create_state_record("WIN_RATE", winRate)
+        #create_state_record("WIN_RATE", winRate)
         create_state_record("FREQUENCY_RATE", frequencyRate)
-        create_state_record("TOTAL_RATE", totalRate)
-        create_state_record("PROFIT_RATE", profitRate)
+        #create_state_record("TOTAL_RATE", totalRate)
+        #create_state_record("PROFIT_RATE", profitRate)
 
         # CESIS TOXIC OPTIMIZATION PROCESSING
         #if totalRate >= 90:
@@ -2185,8 +2509,8 @@ class EVALUATOR():
     def generateStats(self, lastCandle):
         winRate, profitRate, frequencyRate, totalRate = self.calculateRate()
 
-        create_state_record("SL_LEVEL", meta_params[MT_SLTP][0])
-        create_state_record("TP_LEVEL", meta_params[MT_SLTP][1])
+        #create_state_record("SL_LEVEL", meta_params[MT_SLTP][0])
+        #create_state_record("TP_LEVEL", meta_params[MT_SLTP][1])
         self.sl_last, self.tp_last = self.calculateSLTP(lastCandle)
 
         # division by 100 related to bug of forex prices
@@ -2269,8 +2593,8 @@ class EVALUATOR():
 
     def scaleSynthetic(self, numPosesEx):
         #return 1
-        return numPosesEx
-        #return ((numPosesEx)**2)
+        #return numPosesEx
+        return ((numPosesEx)**2)
 
     def setSLTP(self, candle_sequence, atr, sar, snr):
         numTP = 0
@@ -2292,8 +2616,8 @@ class EVALUATOR():
                 if candle.isLong():
 
                     if meta_params[MT_SLTP_MODE] == "SNR":
-                        stopLoss = snrValue.l
-                        takeProfit = snrValue.h
+                        stopLoss = snrValue.l# - ((snrValue.h-snrValue.l))*0.05
+                        takeProfit = snrValue.h# - ((snrValue.h-snrValue.l))*0.05
 
 
                     elif sarValue < candle.l and meta_params[MT_SLTP_MODE] == "SAR":
@@ -2316,8 +2640,8 @@ class EVALUATOR():
                 elif candle.isShort():
 
                     if meta_params[MT_SLTP_MODE] == "SNR":
-                        stopLoss = snrValue.h
-                        takeProfit = snrValue.l
+                        stopLoss = snrValue.h# + ((snrValue.h-snrValue.l))*0.05
+                        takeProfit = snrValue.l# + ((snrValue.h-snrValue.l))*0.05
 
                     elif sarValue > candle.h and meta_params[MT_SLTP_MODE] == "SAR":
                         sarDelta = abs(candle.h - sarValue)
@@ -2398,19 +2722,50 @@ class EVALUATOR():
 
             #create_state_record(sequence_name + "_ACCEPTANCE_RATE", signalingCandles.calculate_acceptance_rate())
 
-        #for signalingIndicator in evaluated["variant_indicators"]:
-            #signaling_value = signalingIndicator.getValue(-1)
-            #sequence_name = str(signalingIndicator.__class__)
-            #if last_candle_bearish and signaling_value.bearish or last_candle_bullish and signaling_value.bullish:
+        for signalingIndicator in evaluated["variant_indicators"]:
+            sequence_name = str(signalingIndicator.__class__)
+
+            create_state_record(sequence_name + "_VALUE", signalingIndicator.getValue(-1))
+            create_state_record(sequence_name + "_SPEED", signalingIndicator.getDt(-1))
+            create_state_record(sequence_name + "_ACC", signalingIndicator.getAcc(-1))
+            create_state_record(sequence_name + "_WEIGHT", signalingIndicator.weight)
+            create_state_record(sequence_name + "_PARAMETER", signalingIndicator.variable_1)
+
+            #if last_candle_bearish and signalingIndicator.isBearish(-1) or last_candle_bullish and signalingIndicator.isBullish(-1) :
                 #create_state_record(sequence_name + "_CONFLUENT", 1)
                 #create_state_record(sequence_name + "_DIVERGENT", 0)
-            #elif last_candle_bearish and signaling_value.bullish or last_candle_bullish and signaling_value.bearish:
+            #elif last_candle_bearish and signalingIndicator.isBullish(-1) or last_candle_bullish and signalingIndicator.isBearish(-1):
                 #create_state_record(sequence_name + "_CONFLUENT", 0)
                 #create_state_record(sequence_name + "_DIVERGENT", 1)
             #else:
                 #create_state_record(sequence_name + "_CONFLUENT", 0)
                 #create_state_record(sequence_name + "_DIVERGENT", 0)
             #create_state_record(sequence_name + "_ACCEPTANCE_RATE", signalingIndicator.calculate_acceptance_rate())
+
+        create_state_record("MT_HA_WEIGHT",meta_params[MT_HA_WEIGHT])
+        create_state_record("MT_BOILINGER_WEIGHT",meta_params[MT_BOILINGER_WEIGHT ])
+        create_state_record("MT_EXPLORE_TARGET",meta_params[MT_EXPLORE_TARGET ])
+        create_state_record("MT_BOILINGER_PERIOD",meta_params[MT_BOILINGER_PERIOD ])
+        create_state_record("MT_SAR_ACC",meta_params[MT_SAR_ACC ])
+        create_state_record("MT_EXPLORE_SAMPLES",meta_params[MT_EXPLORE_SAMPLES ])
+        create_state_record("MT_INDICATORS_DEPTH",meta_params[MT_INDICATORS_DEPTH ])
+        create_state_record("MT_WINDOW",meta_params[MT_WINDOW ])
+        create_state_record("MT_CONFL_DEPTH",meta_params[MT_CONFL_DEPTH ])
+        create_state_record("MT_CONFL_TRESH",meta_params[MT_CONFL_TRESH ])
+        create_state_record("MT_SET_IGNORE",meta_params[MT_SET_IGNORE ])
+        create_state_record("MT_SLTP_REV",meta_params[MT_SLTP_REV ])
+        create_state_record("MT_SLTP_MODE",meta_params[MT_SLTP_MODE ])
+        create_state_record("MT_SATE_MACHINE_CONF",meta_params[MT_SATE_MACHINE_CONF ])
+        create_state_record("MT_ADX_THRESH",meta_params[MT_ADX_THRESH ])
+        create_state_record("MT_VOL_THRESH",meta_params[MT_VOL_THRESH ])
+        create_state_record("MT_SNR_WEIGHT",meta_params[MT_SNR_WEIGHT ])
+        create_state_record("MT_ATR_THRESH",meta_params[MT_ATR_THRESH ])
+        create_state_record("MT_NUM_SNR",meta_params[MT_NUM_SNR ])
+        create_state_record("MT_VSNR_SENSE",meta_params[MT_VSNR_SENSE ])
+        create_state_record("MT_VOL_THRESH",meta_params[MT_VOL_THRESH ])
+        create_state_record("MT_SNR_SENSE",meta_params[MT_SNR_SENSE ])
+        create_state_record("MT_THRESH_LIM",meta_params[MT_THRESH_LIM ])
+
 
     def apply_meta_window(self, O, C, H, L, V):
         return O[meta_params[MT_WINDOW]:],C[meta_params[MT_WINDOW]:], H[meta_params[MT_WINDOW]:], L[meta_params[MT_WINDOW]:], V[meta_params[MT_WINDOW]:]
@@ -2456,16 +2811,20 @@ class EVALUATOR():
                 return self.total/100
 
             signal_type = "USUAL"
+            #if not lastCandle.trap:
+                #if lastCandle.isLong():
+                    #signal_type = "RISING"
+                #elif lastCandle.isShort():
+                    #signal_type = "FALLING"
 
-            if lastCandle.isLong():
-                signal_type = "RISING"
-            elif lastCandle.isShort():
-                signal_type = "FALLING"
-
-            #if lastCandle.bullish:
-                #signal_type = self.stateMachine.are_new_state_signal("UPTREND")
-            #elif lastCandle.bearish:
-                #signal_type = self.stateMachine.are_new_state_signal("DOWNTREND")
+            if lastCandle.bullish:
+                signal_type = self.stateMachine.are_new_state_signal("UPTREND")
+                if not lastCandle.isLong():
+                    signal_type = "USUAL"
+            elif lastCandle.bearish:
+                signal_type = self.stateMachine.are_new_state_signal("DOWNTREND")
+                if not lastCandle.isShort():
+                    signal_type = "USUAL"
 
             self.evaluatedTMP = evaluated
             self.lastCandleTMP = lastCandle
@@ -2504,8 +2863,8 @@ class MarketProcessingPayload(Payload):
         self.worst_perfomance = 200
         self.optmizationApplied = False
 
-        self.optimization_trigger = 73
-        self.optimization_target = 83
+        self.optimization_trigger = 55
+        self.optimization_target = 75
         self.optimization_criteria = self.optimization_trigger
 
         self.lower_silence_trigger = 80
@@ -2531,7 +2890,7 @@ class MarketProcessingPayload(Payload):
         # OPTIMIZATION PRIOR TO
         # PREVIOUS 100
 
-        optimization_level = RANDOM.randint(0,  4)
+        optimization_level = RANDOM.randint(0,  7)
 
         if optimization_level >= 0:
             random_meta1 = self.get_random_meta_idx()
@@ -2549,6 +2908,19 @@ class MarketProcessingPayload(Payload):
             random_meta4 = self.get_random_meta_idx()
             meta_backup4 = meta_params[random_meta4]
 
+        if optimization_level >= 4:
+            random_meta5 = self.get_random_meta_idx()
+            meta_backup5 = meta_params[random_meta5]
+
+        if optimization_level >= 5:
+            random_meta6 = self.get_random_meta_idx()
+            meta_backup6 = meta_params[random_meta6]
+
+        if optimization_level >= 6:
+            random_meta7 = self.get_random_meta_idx()
+            meta_backup7 = meta_params[random_meta7]
+
+
 
 
         if optimization_level >= 0:
@@ -2559,13 +2931,19 @@ class MarketProcessingPayload(Payload):
             meta_params[random_meta3] = meta_option[random_meta3]()
         if optimization_level >= 3:
             meta_params[random_meta4] = meta_option[random_meta4]()
+        if optimization_level >= 4:
+            meta_params[random_meta5] = meta_option[random_meta5]()
+        if optimization_level >= 5:
+            meta_params[random_meta6] = meta_option[random_meta6]()
+        if optimization_level >= 6:
+            meta_params[random_meta7] = meta_option[random_meta7]()
 
         virtualEvaluator = EVALUATOR(self.token, draw = False, virtual = True)
         virtualEvaluator.evaluate(O, C, H, L, V)
         newTR = virtualEvaluator.total
 
         tr = self.last_tr if tweak_major else self.minor_tr
-        if newTR > tr and newTR < 98:
+        if newTR > tr:
             simple_log("**V ", meta_params, log_level=2)
             if tweak_major:
                 simple_log(f"{round(self.last_tr,4)} -> {round(newTR,4)}", log_level=4)
@@ -2579,6 +2957,12 @@ class MarketProcessingPayload(Payload):
 
             return True
         else:
+            if optimization_level >= 6:
+                meta_params[random_meta7] = meta_backup7
+            if optimization_level >= 5:
+                meta_params[random_meta6] = meta_backup6
+            if optimization_level >= 4:
+                meta_params[random_meta5] = meta_backup5
             if optimization_level >= 3:
                 meta_params[random_meta4] = meta_backup4
             if optimization_level >= 2:
@@ -2633,8 +3017,9 @@ class MarketProcessingPayload(Payload):
 
     def fetch_market_data(self, feedback = None):
 
-        global some_meta_was_cached
-        some_meta_was_cached = False
+        global meta_cached
+        meta_cached = {}
+        meta_cached = {}
 
         HOST = "127.0.0.1"
         data = {}
@@ -2653,7 +3038,7 @@ class MarketProcessingPayload(Payload):
     def prepare_feedback(self):
         simple_log("VVV ", self.last_sl, self.last_tp, log_level=1)
         if not self.last_sl is None and not self.last_tp is None:
-            return {"SL": self.last_tp, "TP": self.last_sl, "printable_metadata": SIGNALS_LOG}
+            return {"SL": self.last_sl, "TP": self.last_tp, "printable_metadata": SIGNALS_LOG}
         else:
             return None
 
