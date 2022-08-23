@@ -99,6 +99,8 @@ N_BEAR_DT      = 1 << 9
 N_BULL_ACC     = 1 << 10
 N_BEAR_ACC     = 1 << 11
 N_TRAP         = 1 << 12
+N_SOFT_BULLISH = 1 << 13
+N_SOFT_BEARISH = 1 << 14
 
 #====================================================>
 #=========== SKETCH OF OOP SUPERVISER MODEL
@@ -443,6 +445,10 @@ def make_image_snapshot(variant_candles, variant_indicators, p1, p2):
             col = (0,0,255)
         elif indicator.isBullish(I2)  or indicator.isBullish(I2):
             col = (0,255,0)
+        elif indicator.isSoftBullish(I2)  or indicator.isSoftBullish(I2):
+            col = (0,100,0)
+        elif indicator.isSoftBearish(I2)  or indicator.isSoftBearish(I2):
+            col = (0,0,100)
         elif indicator.isBad(I1) or indicator.isBad(I2):
             col = (0,255,255)
 
@@ -768,6 +774,14 @@ class Indicator():
         self.delta = np.asarray([0 for _ in range(self.num_values)])
         self.acc    = np.asarray([0 for _ in range(self.num_values)])
 
+        self.avg_value = 0
+        self.avg_delta = 0
+        self.avg_acc = 0
+
+        self.std_acc = 0
+        self.std_delta = 0
+        self.std_value = 0
+
     def prepare_weights_selector(self):
         return lambda : RANDOM.choice([0.25, 0.5, 1, 1.5])
 
@@ -808,6 +822,14 @@ class Indicator():
 
             self.delta = cached.delta
             self.acc = cached.acc
+
+            self.avg_value = cached.avg_value
+            self.avg_acc = cached.avg_acc
+            self.avg_delta = cached.avg_delta
+
+            self.std_value = cached.std_value
+            self.std_acc = cached.std_acc
+            self.std_delta = cached.std_delta
 
             self.depth = cached.depth
 
@@ -897,6 +919,12 @@ class Indicator():
     def isBullish(self, idx):
         return self.state[idx] & N_BULLISH
 
+    def isSoftBullish(self, idx):
+        return self.state[idx] & N_SOFT_BULLISH
+
+    def isSoftBearish(self, idx):
+        return self.state[idx] & N_SOFT_BEARISH
+
     def markBad(self, idx):
         self.state[idx] |= N_BAD
 
@@ -924,6 +952,14 @@ class Indicator():
     def calculate_dynamics(self):
         self.delta = np.diff(self.values, prepend=self.values[0])
         self.acc   = np.diff(self.delta, prepend=self.delta[0])
+
+        self.avg_value = np.mean(self.values)
+        self.avg_delta = np.mean(self.delta)
+        self.avg_acc = np.mean(self.acc)
+
+        self.std_val = np.std(self.values)
+        self.std_del = np.std(self.delta)
+        self.std_acc = np.std(self.acc)
 
         #for i in range(1, self.num_values):
 
@@ -1242,6 +1278,9 @@ class MINUS_DI(Indicator):
     def prepare_variant_1_selector(self):
         return lambda : RANDOM.randrange(7, 30, 1)
 
+    def resolve_variable_1(self):
+        return meta_params[ADX.META_VARIANT1_INDEX]
+
     def calculate(self):
 
         if self.try_restore_simple_cached():
@@ -1269,6 +1308,9 @@ class PLUS_DI(Indicator):
 
     def prepare_variant_1_selector(self):
         return lambda : RANDOM.randrange(7, 30, 1)
+
+    def resolve_variable_1(self):
+        return meta_params[ADX.META_VARIANT1_INDEX]
 
     def calculate(self):
 
@@ -1873,6 +1915,7 @@ class Strategy():
                 else:
                     boilinger.markBullish()
                     boilinger.green = True
+                    prevGreen = False
 
             elif candle.green and abs(candle.c - boilinger.h) > abs(candle.c - boilinger.o):
                 if not prevRed:
@@ -1882,6 +1925,7 @@ class Strategy():
                 else:
                     boilinger.markBearish()
                     boilinger.red = True
+                    prevGreen = False
             else:
                 prevGreen = False
                 prevRed = False
@@ -1896,24 +1940,26 @@ class Strategy():
             snr = SNR.ofIdx(index)
 
             if candle.red and abs(candle.c - snr.l) > abs(candle.c - snr.o):
+
                 if not prevGreen:
                     snr.markBearish()
                     snr.red = True
                     prevRed = True
-                    prevGreen = False
                 else:
                     snr.markBullish()
                     snr.green = True
+                    prevGreen = False
 
             elif candle.green and abs(candle.c - snr.h) > abs(candle.c - snr.o):
+
                 if not prevRed:
                     snr.markBullish()
                     snr.green = True
                     prevGreen = True
-                    prevRed = False
                 else:
                     snr.markBearish()
                     snr.red = True
+                    prevRed = False
 
             else:
                 snr.markBad()
@@ -1928,10 +1974,11 @@ class Strategy():
         close_array = candle_sequence.c_cached
 
 
-        #ma.state[(close_array > ma.values) * (ma.state & N_BULL_ACC)*( ma.state & N_BULL_DT)] |= N_BULLISH
-        #ma.state[(close_array > ma.values) * (ma.state & N_BULL_ACC)*( ma.state & N_BULL_DT)] |= N_BULLISH
-        ma.state[np.logical_and((close_array > ma.values) , (ma.delta > 0), (ma.acc >0) )] |= N_BULLISH
-        ma.state[np.logical_and((close_array < ma.values) , (ma.delta < 0), (ma.acc >0) )] |= N_BEARISH
+        ma.state[(close_array > ma.values)] |= N_SOFT_BULLISH
+        ma.state[(close_array < ma.values)] |= N_SOFT_BEARISH
+
+        ma.state[np.logical_and((close_array > ma.values) , (ma.delta > 0) )] |= N_BULLISH
+        ma.state[np.logical_and((close_array < ma.values) , (ma.delta < 0) )] |= N_BEARISH
 
         ma.record_cache()
 
@@ -1943,8 +1990,11 @@ class Strategy():
         close_array = candle_sequence.c_cached
 
 
-        supertrend.state[(close_array > supertrend.values)] |= N_BULLISH
-        supertrend.state[(close_array < supertrend.values)] |= N_BEARISH
+        supertrend.state[(close_array > supertrend.values)] |= N_SOFT_BULLISH
+        supertrend.state[(close_array < supertrend.values)] |= N_SOFT_BEARISH
+
+        supertrend.state[np.logical_and((close_array > supertrend.values), (supertrend.acc > 0))] |= N_BULLISH
+        supertrend.state[np.logical_and((close_array < supertrend.values), (supertrend.acc > 0))] |= N_BEARISH
 
         supertrend.record_cache()
 
@@ -1952,8 +2002,11 @@ class Strategy():
 
         close_array = candle_sequence.c_cached
 
-        sar.state[close_array > sar.values] |= N_BULLISH
-        sar.state[close_array < sar.values] |= N_BEARISH
+        sar.state[close_array > sar.values] |= N_SOFT_BULLISH
+        sar.state[close_array < sar.values] |= N_SOFT_BEARISH
+
+        sar.state[np.logical_and((close_array > sar.values), (sar.acc > 0))] |= N_BULLISH
+        sar.state[np.logical_and((close_array < sar.values), (sar.acc > 0))] |= N_BEARISH
 
     def evaluateMACross(self, candle_sequence, fastMa, slowMa):
 
@@ -1961,6 +2014,9 @@ class Strategy():
             return
 
         close_array = candle_sequence.c_cached
+
+        fastMa.state[(fastMa.values > slowMa.values)] |= N_SOFT_BULLISH
+        fastMa.state[(fastMa.values < slowMa.values)] |= N_SOFT_BEARISH
 
         fastMa.state[np.logical_and((fastMa.values > slowMa.values), (fastMa.delta > 0))] |= N_BULLISH
         fastMa.state[np.logical_and((fastMa.values < slowMa.values), (fastMa.delta < 0))] |= N_BEARISH
@@ -1972,8 +2028,8 @@ class Strategy():
 
     def evaluateATR(self, candle_sequence, atr):
 
-        if atr.restored:
-            return
+        #if atr.restored:
+            #return
 
         #ref_idx = meta_params[MT_ATR_THRESH]%len(atr.values)
         #threshold = atr.getValue(ref_idx)
@@ -1981,7 +2037,7 @@ class Strategy():
         #threshold2 = atr.maxAbs() - threshold * meta_params[MT_THRESH_LIM]
 
         #atr.state[(atr.values < threshold1)] |= N_BAD
-        atr.state[(atr.acc > 0)] |= N_BAD
+        atr.state[np.logical_and((atr.delta < 0), (atr.acc > 0))] |= N_BAD
 
         #atr.record_cache()
 
@@ -1990,8 +2046,11 @@ class Strategy():
         if rsi.restored:
             return
 
-        rsi.state[np.logical_and((rsi.values < 30) , (rsi.delta > 0))] |= N_BULLISH
-        rsi.state[np.logical_and((rsi.values > 70) , (rsi.delta < 0))] |= N_BEARISH
+        rsi.state[(rsi.values < 35)] |= N_SOFT_BULLISH
+        rsi.state[(rsi.values > 60)] |= N_SOFT_BEARISH
+
+        rsi.state[np.logical_and((rsi.values < 30) , (rsi.acc > 0))] |= N_BULLISH
+        rsi.state[np.logical_and((rsi.values > 70) , (rsi.acc > 0))] |= N_BEARISH
 
         rsi.record_cache()
 
@@ -2013,8 +2072,11 @@ class Strategy():
 
         #plus_di.state[(plus_di.values > minus_di.values)* (plus_di.state & N_BULL_DT)* (plus_di.state & N_BULL_ACC)] |= N_BULLISH
         #minus_di.state[(minus_di.values > plus_di.values)*( minus_di.state & N_BULL_DT)* (minus_di.state & N_BULL_ACC)] |= N_BULLISH
-        plus_di.state[np.logical_and((plus_di.values > minus_di.values),(plus_di.delta > 0), (plus_di.acc < 0))] |= N_BULLISH
-        minus_di.state[np.logical_and((minus_di.values > plus_di.values),(minus_di.delta > 0), (minus_di.acc < 0))] |= N_BEARISH
+        plus_di.state[(plus_di.values > minus_di.values)] |= N_SOFT_BULLISH
+        minus_di.state[(minus_di.values > plus_di.values)] |= N_SOFT_BEARISH
+
+        plus_di.state[np.logical_and((plus_di.values > minus_di.values),(plus_di.delta > 0))] |= N_BULLISH
+        minus_di.state[np.logical_and((minus_di.values > plus_di.values),(minus_di.delta > 0))] |= N_BEARISH
 
         plus_di.record_cache()
         minus_di.record_cache()
@@ -2023,8 +2085,11 @@ class Strategy():
 
         #macd.state[macd.values > 0] |= N_BULLISH
         #macd.state[macd.values < 0] |= N_BEARISH
-        macd.state[np.logical_and((macd.values > 0),(macd.delta > 0 ))] |= N_BULLISH
-        macd.state[np.logical_and((macd.values < 0),(macd.delta < 0 ))] |= N_BEARISH
+        macd.state[(macd.delta > 0 )] |= N_SOFT_BULLISH
+        macd.state[(macd.delta < 0 )] |= N_SOFT_BEARISH
+
+        macd.state[np.logical_and((macd.acc > 0),(macd.delta > 0 ))] |= N_BULLISH
+        macd.state[np.logical_and((macd.acc > 0),(macd.delta < 0 ))] |= N_BEARISH
 
 
     def evaluateADOSC(self, candle_sequence, adosc):
@@ -2037,7 +2102,6 @@ class Strategy():
         ref_idx = meta_params[MT_VOL_THRESH]%len(volume.values)
         threshold = volume.getValue(ref_idx)
         threshold1 = volume.minAbs() + threshold * meta_params[MT_THRESH_LIM]
-        threshold2 = volume.maxAbs() - threshold * meta_params[MT_THRESH_LIM]
 
         volume.state[(volume.values < threshold1)] |= N_BAD
 
@@ -2074,6 +2138,12 @@ class Strategy():
                 if indicator.isBearish(index):
                     bearishPoints += indicator.weight
 
+                if indicator.isSoftBullish(index):
+                    bullishPoints += indicator.weight/2
+
+                if indicator.isSoftBearish(index):
+                    bearishPoints += indicator.weight/2
+
                 if indicator.isBad(index):
                     badPoints += 1
 
@@ -2099,7 +2169,7 @@ class Strategy():
 
             threshold = meta_params[MT_CONFL_TRESH]
 
-            if badPoints > 0:
+            if badPoints > 1:
                 newState = stateMachine.are_new_state_signal("DIRTY")
             elif marketState > threshold and currentBalacne >= avgBalance:
                 evaluated["target"][0].variant_candles[index].markBullish()
@@ -2235,7 +2305,7 @@ class Strategy():
 
         HA = prepareHA(variant_candles, 4)
         BOILINGER = prepareBoilinger(variant_candles, 0, meta_params[MT_BOILINGER_PERIOD])
-        RENKO = prepareRekno(variant_candles, 5)
+        #RENKO = prepareRekno(variant_candles, 5)
         SNR = prepareSNR(HA, 4)
         VBSNR = prepareVBSNR(variant_candles, 0)
 
@@ -2246,8 +2316,8 @@ class Strategy():
         window = slice(MA_LAG, lastCandle)
 
         #self.evaluateRenko(RENKO, window)
-        RENKO.setWeight(1)
-        evaluated["variant_candles"].append(RENKO)
+        #RENKO.setWeight(1)
+        #evaluated["variant_candles"].append(RENKO)
 
         self.evaluateHA(HA, window)
         HA.setWeight(meta_params[MT_HA_WEIGHT])
@@ -2479,10 +2549,10 @@ class EVALUATOR():
         #frequencyActual = (self.poses / self.bars) if self.bars > 0 else 0
         # TODO justify this constant somehow
         #frequencyDemanded = 15 / self.bars
-        frequencyRate = (1 - (abs(self.poses - 100) / 100))*100
+        frequencyRate = (1 - (abs(self.poses - 3000) / 3000))*100
         #simple_log(f"PROFIT RATE {round(profitRate,3)}%")
         #totalRate = (4*winRate + 5*profitRate + 1*frequencyRate)/10
-        totalRate = (3*winRate + 7*profitRate)/10
+        totalRate = (1*frequencyRate + 3*winRate + 6*profitRate)/10
 
         #create_state_record("WIN_RATE", winRate)
         create_state_record("FREQUENCY_RATE", frequencyRate)
@@ -2863,11 +2933,11 @@ class MarketProcessingPayload(Payload):
         self.worst_perfomance = 200
         self.optmizationApplied = False
 
-        self.optimization_trigger = 55
+        self.optimization_trigger = 60
         self.optimization_target = 75
         self.optimization_criteria = self.optimization_trigger
 
-        self.lower_silence_trigger = 80
+        self.lower_silence_trigger = 75
         self.higher_silence_trigger = 101
 
         self.indexesInWork = []
