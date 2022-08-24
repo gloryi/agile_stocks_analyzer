@@ -13,6 +13,7 @@ PORT = 6666
 
 def initialize_socket():
     ***REMOVED***
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     ***REMOVED***
 
 ***REMOVED***

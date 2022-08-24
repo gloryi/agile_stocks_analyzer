@@ -3281,12 +3281,15 @@ class MyClientProtocol():
 if __name__ == '__main__':
 
     TOKEN_NAME = sys.argv[1]
+
     if len (sys.argv) > 2:
         VALIDATION_MODE = True if sys.argv[2] == "V" else False
         timeframe = 0
         INTERVAL_M = 0
     else:
         VALIDATION_MODE = False
+
+    SEED = random.randint(0,10**10)
 
     if len (sys.argv) > 3:
         RANDOM_MODE = sys.argv[3]
