@@ -185,6 +185,7 @@ def processAsset(filename = os.path.join(os.getcwd(),
                                          "ValidationDatasets",
                                          DATASET)):
 ***REMOVED***
+
     with open(filename, "r") as ochlfile:
         reader = csv.reader(ochlfile)
         for line in reader:
@@ -198,6 +199,7 @@ def processAsset(filename = os.path.join(os.getcwd(),
             H.append(float(line[_H])*100)
             L.append(float(line[_L])*100)
             V.append(v)
+
 ***REMOVED***
 
 #====================================================>

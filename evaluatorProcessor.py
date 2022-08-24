@@ -295,7 +295,7 @@ meta_params[MT_SLTP_MODE] = "SNR"
 
 #
 MT_SATE_MACHINE_CONF = 15
-meta_option[MT_SATE_MACHINE_CONF] = lambda : RANDOM.choice([1])
+meta_option[MT_SATE_MACHINE_CONF] = lambda : RANDOM.choice([1, 2, 3])
 meta_params[MT_SATE_MACHINE_CONF] = 1
 
 MT_ADX_THRESH = 16
@@ -1712,6 +1712,8 @@ def prepareSNR(candle_sequence, section):
 
         peaks.sort()
 
+        #peaks = np.asarray([peaks[0]] + peaks[1:-1:2] + [peaks[-1]])
+
         prev_h = 0
         prev_l = 0
 
@@ -1795,6 +1797,8 @@ def prepareVBSNR(candle_sequence, section):
         minmax = np.asarray([arrClose.max(), arrClose.min()])
         peaks = np.concatenate((highPeaks, minmax))
         peaks.sort()
+
+        #peaks = np.asarray([peaks[0]] + peaks[1:-1:2] + [peaks[-1]])
 
         prev_h, prev_l, smooth = 0, 0, 0
 
@@ -2169,7 +2173,7 @@ class Strategy():
 
             threshold = meta_params[MT_CONFL_TRESH]
 
-            if badPoints > 1:
+            if badPoints >= 1:
                 newState = stateMachine.are_new_state_signal("DIRTY")
             elif marketState > threshold and currentBalacne >= avgBalance:
                 evaluated["target"][0].variant_candles[index].markBullish()
@@ -2882,19 +2886,19 @@ class EVALUATOR():
 
             signal_type = "USUAL"
             #if not lastCandle.trap:
-                #if lastCandle.isLong():
-                    #signal_type = "RISING"
-                #elif lastCandle.isShort():
-                    #signal_type = "FALLING"
+            if lastCandle.isLong():
+                signal_type = "RISING"
+            elif lastCandle.isShort():
+                signal_type = "FALLING"
 
-            if lastCandle.bullish:
-                signal_type = self.stateMachine.are_new_state_signal("UPTREND")
-                if not lastCandle.isLong():
-                    signal_type = "USUAL"
-            elif lastCandle.bearish:
-                signal_type = self.stateMachine.are_new_state_signal("DOWNTREND")
-                if not lastCandle.isShort():
-                    signal_type = "USUAL"
+            #if lastCandle.bullish:
+                #signal_type = self.stateMachine.are_new_state_signal("UPTREND")
+                #if not lastCandle.isLong():
+                    #signal_type = "USUAL"
+            #elif lastCandle.bearish:
+                #signal_type = self.stateMachine.are_new_state_signal("DOWNTREND")
+                #if not lastCandle.isShort():
+                    #signal_type = "USUAL"
 
             self.evaluatedTMP = evaluated
             self.lastCandleTMP = lastCandle
