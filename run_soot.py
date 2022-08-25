@@ -21,6 +21,7 @@ def list_assets(folder = LOCAL_FOLDER):
 
 def select_assets(n_nodes):
     known_assets = [pathlib.Path(_).stem for _ in list_assets()]
+    print(known_assets)
     return random.sample(known_assets, n_nodes)
 
 def launch_test(ASSET):
@@ -54,7 +55,7 @@ project_path = os.getcwd()
 
 evaluation_server_plug = subprocess.Popen(["python3",
                                            os.path.join(project_path,
-                                                        "_validator_server_plug.py"), "6666"])
+                                                        "soot_plug.py"), "6666"])
 
 local_fetcher = subprocess.Popen(["python3",
                                   os.path.join(project_path,
@@ -69,7 +70,7 @@ assets = select_assets(N_NODES)
     evaluator = launch_test(asset)
     evaluators.append(evaluator)
 
-evaluation_server_plug.wati()
+evaluation_server_plug.wait()
 
 suspend_current(validators, evaluators)
 

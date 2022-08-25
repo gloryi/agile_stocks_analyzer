@@ -45,6 +45,7 @@ from scipy.signal import find_peaks
 #====================================================>
 
 TOKEN_NAME = "UNKNOWN"
+TOKEN_INDEX = 0
 TEST_CASE = "UNKNOWN"
 VALIDATION_MODE = False
 MA_LAG = 200
@@ -52,8 +53,8 @@ MA_LAG = 200
 LOG_TOLERANCE = 3
 FETCHER_***REMOVED***
 INTERFACE_PORT = 6666
-#VISUALISE = False
-VISUALISE = True
+VISUALISE = False
+#VISUALISE = True
 LOGGING = True
 #LOGGING = False
 
@@ -64,7 +65,8 @@ RANDOM = None
 SIGNALS_LOG = []
 RECORD_STATS = True
 
-isFirst = True
+#isFirst = True
+isFirst = False
 
 
 INTERVAL_M = 30
@@ -2886,6 +2888,11 @@ class EVALUATOR():
 
             signal_type = "USUAL"
             #if not lastCandle.trap:
+            #print("DANGEROUS HARDCODE. LINE 2891. TEST PURPOSES ONLY")
+            #if random.randint(0,100) > 90:
+                #signal_type = "RISING"
+            #elif random.randint(0,100) < 10:
+                #signal_type = "FALLING"
             if lastCandle.isLong():
                 signal_type = "RISING"
             elif lastCandle.isShort():
@@ -2941,7 +2948,7 @@ class MarketProcessingPayload(Payload):
         self.optimization_target = 75
         self.optimization_criteria = self.optimization_trigger
 
-        self.lower_silence_trigger = 75
+        self.lower_silence_trigger = 70
         self.higher_silence_trigger = 101
 
         self.indexesInWork = []
@@ -2986,13 +2993,6 @@ class MarketProcessingPayload(Payload):
             random_meta5 = self.get_random_meta_idx()
             meta_backup5 = meta_params[random_meta5]
 
-        if optimization_level >= 5:
-            random_meta6 = self.get_random_meta_idx()
-            meta_backup6 = meta_params[random_meta6]
-
-        if optimization_level >= 6:
-            random_meta7 = self.get_random_meta_idx()
-            meta_backup7 = meta_params[random_meta7]
 
 
 
@@ -3007,10 +3007,10 @@ class MarketProcessingPayload(Payload):
             meta_params[random_meta4] = meta_option[random_meta4]()
         if optimization_level >= 4:
             meta_params[random_meta5] = meta_option[random_meta5]()
-        if optimization_level >= 5:
-            meta_params[random_meta6] = meta_option[random_meta6]()
-        if optimization_level >= 6:
-            meta_params[random_meta7] = meta_option[random_meta7]()
+
+
+
+
 
         virtualEvaluator = EVALUATOR(self.token, draw = False, virtual = True)
         virtualEvaluator.evaluate(O, C, H, L, V)
@@ -3026,15 +3026,12 @@ class MarketProcessingPayload(Payload):
                 self.last_tr = newTR
                 self.optmizationApplied = True
             else:
-                simple_log(f"{self.token} |Minor| {round(self.minor_tr,4)} -> {round(newTR,4)}", log_level=4)
+                _tokenlog = "{}".format(self.token).rjust(10)
+                simple_log(f"{_tokenlog} |Minor| {round(self.minor_tr,4)} -> {round(newTR,4)}", log_level=4)
                 self.minor_tr = newTR
 
             return True
         else:
-            if optimization_level >= 6:
-                meta_params[random_meta7] = meta_backup7
-            if optimization_level >= 5:
-                meta_params[random_meta6] = meta_backup6
             if optimization_level >= 4:
                 meta_params[random_meta5] = meta_backup5
             if optimization_level >= 3:
@@ -3097,15 +3094,32 @@ class MarketProcessingPayload(Payload):
 
         HOST = "127.0.0.1"
         data = {}
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((HOST, FETCHER_PORT))
-            data_request = {"asset":TOKEN_NAME}
+        ***REMOVED***
 
-            if not feedback is None:
-                data_request["feedback"] = feedback
+    ***REMOVED***
+    ***REMOVED***
 
-            s.sendall(json.dumps(data_request).encode("UTF-8"))
-            data = json.loads(self.recvall(s).decode("UTF-8"))
+                s.connect((HOST, FETCHER_PORT))
+                data_request = {"asset":TOKEN_NAME}
+
+                if not feedback is None:
+                    data_request["feedback"] = feedback
+
+                s.sendall(json.dumps(data_request).encode("UTF-8"))
+                data = json.loads(self.recvall(s).decode("UTF-8"))
+                if "idx" in data:
+                    global TOKEN_INDEX
+                    TOKEN_INDEX = int(data["idx"])
+
+    ***REMOVED***
+                print(f"Failed to fetch market data: {e}")
+                time.sleep(1)
+                ***REMOVED***
+                ***REMOVED***
+                continue
+            else:
+    ***REMOVED***
+
 
         return data["O"], data["C"], data["H"], data["L"], data["V"]
 
@@ -3151,7 +3165,11 @@ class MarketProcessingPayload(Payload):
 
 
             self.last_tr = self.evaluator.total
-            simple_log(f"### TR = {round(self.last_tr,2)}, NP = {self.evaluator.poses} , DELTA = {round(self.evaluator.clean_profits - self.evaluator.clean_losses,3)} /// {market_situation}", log_level=5)
+            _trlog = "{}".format(round(self.last_tr,2)).rjust(8)
+            _nplog = "{}".format(self.evaluator.poses).rjust(8)
+            _deltalog = "{}".format(round(self.evaluator.clean_profits - self.evaluator.clean_losses,3)).rjust(20)
+
+            simple_log(f"### TR = {_trlog}, NP = {_nplog} , DELTA = {_deltalog} /// {market_situation}", log_level=5)
             #simple_log(f"{meta_params}", log_level=5)
 
             if self.last_tr == 100:
@@ -3250,6 +3268,8 @@ class MarketProcessingPayload(Payload):
     def prepare_report(self):
         message = {}
         message["text"] = self.token + " \n " + self.evaluator.generatedStats
+        message["token"] = self.token
+        message["idx"] = TOKEN_INDEX
         metaUpd = f"{round(self.prior_tr_info*100,1)}% >>> {round(self.tweaked_tr_info*100,1)}%"
         message["text"] += "\n"+metaUpd
         message["image"] = self.evaluator.image_path
@@ -3288,6 +3308,8 @@ if __name__ == '__main__':
         INTERVAL_M = 0
     else:
         VALIDATION_MODE = False
+        timeframe = 0
+        INTERVAL_M = 1
 
     SEED = random.randint(0,10**10)
 

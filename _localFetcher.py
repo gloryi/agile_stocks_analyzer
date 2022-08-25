@@ -53,7 +53,7 @@ def initialize_assets():
     for asset in assets_paths:
 
         asset_name = pathlib.Path(asset).stem
-        print(f"*** Preparing {asset_name}")
+        #print(f"*** Preparing {asset_name}")
         o,c,h,l,v = extractOCHLV(asset)
         random_idx = random.randint(0, len(o)//2)
         assets_dictionary[asset_name] = {"O":o,
@@ -84,37 +84,53 @@ def prepare_requested_prices(asset_name):
 
     target_asset["trailing"] = target_idx + 1
 
-***REMOVED***
+***REMOVED***, target_idx
 
 
 
 ***REMOVED***
 ***REMOVED***
 ***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+            data = conn.recv(10000)
+    ***REMOVED***
+    ***REMOVED***
+    ***REMOVED***
+            #asset_id = assetData["asset"]
+            #asset_idx = assets_dictionary[asset_id]["trailing"]
 
-        O, C, H, L, V = prepare_requested_prices(assetData["asset"])
+            #print(f"Preparing {asset_id} from {asset_idx}")
+
+            O, C, H, L, V, idx = prepare_requested_prices(assetData["asset"])
+
+            ochlResponce = {"O" : O, "C" : C, "H" : H, "L": L, "V" : V, "idx": idx}
+
+    ***REMOVED***
+    ***REMOVED***
+    ***REMOVED***
+            #print("Cooldown of 4 seconds")
+            time.sleep(0.5)
+***REMOVED***
+            print(f"(Sockets sucks). {e}")
+    ***REMOVED***
+
 
 ***REMOVED***
-
 ***REMOVED***
-***REMOVED***
-***REMOVED***
-        print("Cooldown of 30 seconds")
-***REMOVED***
-
-
-***REMOVED***
-***REMOVED***
-***REMOVED***
+    #print(f"{addr} added to processing queue")
 ***REMOVED***
 
 initialize()
 
 ***REMOVED***
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+***REMOVED***
+        ***REMOVED***
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    except Exception as e:
+        print(f"Server could not establish connection {e}")
+        continue
+    else:
+***REMOVED***
+
 
 ***REMOVED***
 
