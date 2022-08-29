@@ -1,5 +1,3 @@
-from autobahn.twisted.websocket import WebSocketServerProtocol, \
-	WebSocketServerFactory
 ***REMOVED***
 import random
 ***REMOVED***
@@ -8,6 +6,7 @@ import telegram
 from telegram_api_config import *
 
 kill_signal_triggered = False
+API_INTERFACE = TelagramBotWrapper()
 
 class TelagramBotWrapper():
 	def __init__(self, *args, **kwards):
@@ -86,38 +85,54 @@ class MyServerProtocol(WebSocketServerProtocol):
 		print("Connection with market analyser opened")
 
 
-	def onMessage(self, payload, isBinary):
-            if kill_signal_triggered:
-                print("Trying to close connection")
-                self.sendMessage("KILL".encode('utf8'))
-                self.sendClose()
-            else:
-                print(payload.decode('utf8'))
                 node_msg = json.loads(payload.decode('utf8'))
-                self.telegram_interface.send_update(node_msg["text"] )
-                if "image" in node_msg:
-                    self.telegram_interface.send_photo(node_msg["image"])
-                return
 
 	def onClose(self, wasClean, code, reason):
 		print("Connection with market analyser closed: {0}".format(reason))
 
+def initialize_socket():
+    ***REMOVED***
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    print('* Socket created')
 
-if __name__ == '__main__':
+***REMOVED***
+        HOST = "0.0.0.0"
+***REMOVED***
+***REMOVED***
+        print('* Bind failed. ')
+        sys.exit()
 
-	***REMOVED***
+    print('* Socket bind complete')
 
-	from twisted.python import log
-	from twisted.internet import reactor
+    ***REMOVED***
+    print('* Socket now listening')
 
-	log.startLogging(sys.stdout)
+    return s
 
-	factory = WebSocketServerFactory("ws://127.0.0.1:9000")
-	factory.protocol = MyServerProtocol
+***REMOVED***
+***REMOVED***
+***REMOVED***
+        node_message = data.decode('UTF-8')
+        message_parsed = json.loads(node_message)
 
-	reactor.listenTCP(9000, factory)
-	try:
-		reactor.run()
-	except Exception:
-		print("Probably kill signal was received")
-		kill_signal_triggered = True
+        API_INTERFACE.send_update(message_parsed["text"] )
+        if "image" in node_msg:
+            API_INTERFACE.send_photo(message_parsed["image"])
+
+***REMOVED***
+
+
+***REMOVED***
+***REMOVED***
+    ***REMOVED***
+    ***REMOVED***
+
+
+PORT = int(sys.argv[1])
+s = initialize_socket()
+initialize_files_structure()
+
+
+start_new_thread(accept_connections, (s,))
+
+***REMOVED***

@@ -203,7 +203,7 @@ class RandomMachine():
 #=========== META PARAMETERS. SIMPLE//STUPID
 #====================================================>
 
-META_SIZE = 26
+META_SIZE = 25
 
 meta_params = [1 for _ in range(META_SIZE)]
 meta_option = [None for _ in range(META_SIZE)]
@@ -265,7 +265,7 @@ meta_params[MT_INDICATORS_DEPTH] = 3
 
 
 MT_WINDOW = 9
-meta_option[MT_WINDOW] = lambda : RANDOM.randrange(0, 300, 20)
+meta_option[MT_WINDOW] = lambda : RANDOM.randrange(0, 350, 20)
 meta_params[MT_WINDOW] = 0
 
 
@@ -283,7 +283,7 @@ meta_option[MT_SET_IGNORE] = lambda : RANDOM.choice([True, False])
 meta_params[MT_SET_IGNORE] = False
 
 MT_SLTP_REV = 13
-meta_option[MT_SLTP_REV] = lambda : RANDOM.choice([False])
+meta_option[MT_SLTP_REV] = lambda : RANDOM.choice([False, True])
 meta_params[MT_SLTP_REV] = False
 
 #MT_CHECK_ACC = 25
@@ -301,11 +301,11 @@ meta_option[MT_SATE_MACHINE_CONF] = lambda : RANDOM.choice([1, 2, 3])
 meta_params[MT_SATE_MACHINE_CONF] = 1
 
 MT_ADX_THRESH = 16
-meta_option[MT_ADX_THRESH] = lambda : RANDOM.randrange(5, 12, 1)
+meta_option[MT_ADX_THRESH] = lambda : RANDOM.randrange(5, 15, 1)
 meta_params[MT_ADX_THRESH] = 6
 
 MT_VOL_THRESH = 17
-meta_option[MT_VOL_THRESH] = lambda : RANDOM.uniform(0.3, 0.45)
+meta_option[MT_VOL_THRESH] = lambda : RANDOM.uniform(0.1, 0.3)
 meta_params[MT_VOL_THRESH] = 0.4
 
 MT_SNR_WEIGHT = 18
@@ -336,9 +336,9 @@ MT_THRESH_LIM = 24
 meta_option[MT_THRESH_LIM] =  lambda : RANDOM.uniform(0.1, 0.75)
 meta_params[MT_THRESH_LIM] = 0.5
 
-MT_RENKO_PREC = 25
-meta_option[MT_RENKO_PREC] =  lambda : RANDOM.randrange(10,20, 1)
-meta_params[MT_RENKO_PREC] = 15
+#MT_RENKO_PREC = 25
+#meta_option[MT_RENKO_PREC] =  lambda : RANDOM.randrange(10,20, 1)
+#meta_params[MT_RENKO_PREC] = 15
 
 meta_duplicate = meta_params[:]
 
@@ -2590,13 +2590,8 @@ class EVALUATOR():
         self.sl_last, self.tp_last = self.calculateSLTP(lastCandle)
 
         # division by 100 related to bug of forex prices
-        if not meta_params[MT_SLTP_REV]:
-            state = "GOING #SHORT#" if lastCandle.bearish else "GOING *LONG*"
-        else:
-            state = "GOING #LONG#" if lastCandle.bearish else "GOING *SHORT*"
-        state += f"\nENTRY: {lastCandle.c/100}"
-        state += f"\nSL {round(self.sl_last/100,3)}, TP {round(self.tp_last/100,3)} || RRR {meta_params[MT_SLTP][0]}/{meta_params[MT_SLTP][1]}\n"
-        state += "--- "*6
+        state = ""
+        state += f"FROM: {lastCandle.c/100}"
         state += f"\nW{round(winRate,1)}% F{round(frequencyRate,1)}% P{round(profitRate,1)}% T{round(totalRate, 1)}%\n"
         state += "EST.PROF {}".format((self.clean_profits - self.clean_losses)/100)
         return state
@@ -2887,12 +2882,14 @@ class EVALUATOR():
                 return self.total/100
 
             signal_type = "USUAL"
+
             #if not lastCandle.trap:
             #print("DANGEROUS HARDCODE. LINE 2891. TEST PURPOSES ONLY")
             #if random.randint(0,100) > 90:
                 #signal_type = "RISING"
             #elif random.randint(0,100) < 10:
                 #signal_type = "FALLING"
+
             if lastCandle.isLong():
                 signal_type = "RISING"
             elif lastCandle.isShort():
@@ -2944,11 +2941,11 @@ class MarketProcessingPayload(Payload):
         self.worst_perfomance = 200
         self.optmizationApplied = False
 
-        self.optimization_trigger = 60
-        self.optimization_target = 75
+        self.optimization_trigger = 65
+        self.optimization_target = 77
         self.optimization_criteria = self.optimization_trigger
 
-        self.lower_silence_trigger = 70
+        self.lower_silence_trigger = 73
         self.higher_silence_trigger = 101
 
         self.indexesInWork = []
@@ -2971,7 +2968,7 @@ class MarketProcessingPayload(Payload):
         # OPTIMIZATION PRIOR TO
         # PREVIOUS 100
 
-        optimization_level = RANDOM.randint(0,  7)
+        optimization_level = RANDOM.randint(0,  5)
 
         if optimization_level >= 0:
             random_meta1 = self.get_random_meta_idx()
@@ -3252,7 +3249,9 @@ class MarketProcessingPayload(Payload):
         elapsed = endTime - initialTime
         elapsed_seconds = elapsed
         simple_log(f"TIME ELAPSED {elapsed_seconds} <--> NEXT CANDLE {INTERVAL_M*60}", log_level = 2)
-        if elapsed < INTERVAL_M*60:
+        #if elapsed < INTERVAL_M*60:
+        # HARDCODE
+        if elapsed < INTERVAL_M*2:
             simple_log("OPTIMIZING !!!",log_level = 2)
             return True
         simple_log("FETCHING DATA",log_level = 2)
@@ -3270,8 +3269,8 @@ class MarketProcessingPayload(Payload):
         message["text"] = self.token + " \n " + self.evaluator.generatedStats
         message["token"] = self.token
         message["idx"] = TOKEN_INDEX
-        metaUpd = f"{round(self.prior_tr_info*100,1)}% >>> {round(self.tweaked_tr_info*100,1)}%"
-        message["text"] += "\n"+metaUpd
+        #metaUpd = f"{round(self.prior_tr_info*100,1)}% >>> {round(self.tweaked_tr_info*100,1)}%"
+        #message["text"] += "\n"+metaUpd
         message["image"] = self.evaluator.image_path
 
         return message
@@ -3309,7 +3308,7 @@ if __name__ == '__main__':
     else:
         VALIDATION_MODE = False
         timeframe = 0
-        INTERVAL_M = 1
+        INTERVAL_M = 5
 
     SEED = random.randint(0,10**10)
 

@@ -101,7 +101,7 @@
 ***REMOVED***
 ***REMOVED***
     minTimeFrame = 15
-    numFrames = 500 
+    numFrames = 500
 ***REMOVED***
 ***REMOVED***
 ***REMOVED***

@@ -72,7 +72,7 @@ assets = select_assets(N_NODES)
 
 evaluation_server_plug.wait()
 
-suspend_current(validators, evaluators)
+suspend_current(evaluators)
 
 os.killpg(os.getpgid(evaluation_server_plug.pid), signal.SIGKILL)
 os.killpg(os.getpgid(local_fetcher.pid), signal.SIGKILL)
