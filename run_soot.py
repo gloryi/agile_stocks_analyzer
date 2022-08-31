@@ -7,7 +7,7 @@ import signal
 import random
 import pathlib
 
-EVALUATOR = "evaluatorProcessor.py"
+EVALUATOR = "roseEvaluator.py"
 LOCAL_FOLDER = os.path.join(os.getcwd(), "various_datasets")
 N_NODES = 1
 

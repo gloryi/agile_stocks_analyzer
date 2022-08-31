@@ -25,7 +25,10 @@ TOTAL_P = 0
 TOTAL_M = 0
 TOTAL_SEEN = 0
 WIN_STREAK = 0
+BAD_DIRECTION = 0
+BAD_ENTRIES = 0
 GLOBAL_IDX = 0
+SHOW_META = False
 BUDGET = []
 
 ***REMOVED***
@@ -52,10 +55,14 @@ class simpleCandle():
         self.red = self.c < self.o
         self.long_entry = False
         self.short_entry = False
+        self.exit = False
         self.entry_level = 0
+        self.exit_level = 0
         self.last = False
         self.vRising = False
         self.index = index
+        self.best_entry = False
+        self.best_exit = False
 
     def ochl(self):
         return self.o, self.c, self.h, self.l
@@ -123,16 +130,25 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
         lwick = fitTozone(_l, minP, maxP)
         hwick = fitTozone(_h, minP, maxP)
 
+        if SHOW_META and (candle.best_entry or candle.best_exit):
+            drawSquareInZone(img, zone, 1-hwick,(i+0.5-0.6)/depth,1-lwick,(i+0.5+0.6)/depth,(0,180,180))
+
         drawLineInZone(img, zone, 1-lwick,(i+0.5)/depth,1-hwick,(i+0.5)/depth,col,thickness=3)
+
         drawSquareInZone(img, zone, 1-cline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col)
+
 
         if candle.long_entry:
             eline = fitTozone(candle.entry_level, minP, maxP)
-            drawLineInZone(img, zone, 1-eline,0,1-eline,1,(125,155,0), thickness = 3)
+            drawLineInZone(img, zone, 1-eline,(i+0.5-3)/depth,1-eline,1,(125,155,0), thickness = 10)
 
         if candle.short_entry:
             eline = fitTozone(candle.entry_level, minP, maxP)
-            drawLineInZone(img, zone, 1-eline,0,1-eline,1,(24,0,150), thickness = 3)
+            drawLineInZone(img, zone, 1-eline,(i+0.5-5)/depth,1-eline,1,(24,0,150), thickness = 10)
+
+        if candle.exit:
+            eline = fitTozone(candle.exit_level, minP, maxP)
+            drawLineInZone(img, zone, 1-eline,(i+0.5-5)/depth,1-eline,1,(200,0,0), thickness = 10)
 
 
 
@@ -151,8 +167,8 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
         #lline = fitTozone(candles[-1].l, minV, maxV)
         #hline = fitTozone(candles[-1].h, minV, maxV)
 
-        drawLineInZone(img, zone, 1-oline,0,1-oline,1,(200,0,200), thickness = 3)
-        drawLineInZone(img, zone, 1-cline,0,1-cline,1,(0,200,200), thickness = 3)
+        drawLineInZone(img, zone, 1-oline,0,1-oline,1,(200,0,200), thickness = 5)
+        drawLineInZone(img, zone, 1-cline,0,1-cline,1,(0,200,200), thickness = 5)
 
         #drawLineInZone(img, zone, 1-lline,0,1-lline,1,(175,0,175), thickness = 2)
         #drawLineInZone(img, zone, 1-hline,0,1-hline,1,(175,0,175), thickness = 2)
@@ -253,19 +269,21 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
     w_separator = (W // (5))*3
     h_separator =(H//5)*2
 
+    if not budget_candles is None:
+        bSquare  = [(h_separator//5)*2+10,  0 + 10, h_separator-10, W-w_separator-300-10]
+        drawSquareInZone(img, bSquare, 0,0,1,1,(10,0,0))
+
+        secondSquare  = [0+10,  W-w_separator-300+10, h_separator-10, W-10]
+        drawSquareInZone(img, secondSquare, 0,0,1,1,(10,10,10))
+
+    else:
+        secondSquare  = [0+10,  0+10, h_separator-10, W-10]
+        drawSquareInZone(img, secondSquare, 0,0,1,1,(10,10,10))
+
     firstSquare  = [h_separator+10,  0+10, H-10, w_separator-10]
     drawSquareInZone(img, firstSquare, 0,0,1,1,(20,20,20))
 
-    #if not budget_candles is None:
-        #bSquare  = [0+10,  w_separator + 10, h_separator//5-10, W-10]
-        #drawSquareInZone(img, bSquare, 0,0,1,1,(100,100,100))
 
-        #secondSquare  = [h_separator//5 + 10,  w_separator+10, h_separator-10, W-10]
-        #drawSquareInZone(img, secondSquare, 0,0,1,1,(30,30,30))
-
-    #else:
-    secondSquare  = [0+10,  0+10, h_separator-10, W-10]
-    drawSquareInZone(img, secondSquare, 0,0,1,1,(10,10,10))
 
     thirdSquare  = [h_separator+10,  w_separator+10, H-10, W-10]
     drawSquareInZone(img, thirdSquare, 0,0,1,1,(5,5,5))
@@ -281,8 +299,8 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
     draw_tasks.append([med_candles, secondSquare])
     draw_tasks.append([last_candles, firstSquare])
 
-    #if not budget_candles is None:
-        #draw_tasks.append([budget_candles, bSquare])
+    if not budget_candles is None:
+        draw_tasks.append([budget_candles, bSquare])
 
     for d_task in draw_tasks:
 
@@ -294,7 +312,7 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
         p2 = candles[-1].index
 
         minV, maxV = minMaxOfZone(candles)
-        drawCandles(img, candles, zone,   minV, maxV, p1, p2)
+        drawCandles(img, candles, zone, minV, maxV, p1, p2)
 
 
     return img
@@ -362,7 +380,7 @@ def lineup_candles(sequence):
         c = sequence[lns+3]
         h = max(sequence[lns:lns+4])
         l = min(sequence[lns:lns+4])
-        candles.append(simpleCandle(o,c,h,l,lns//4))
+        candles.append(simpleCandle(o,c,h,l,0,lns//4))
 
     return candles
 
@@ -405,7 +423,7 @@ def initialize_socket():
     with task_lock:
         global signals_queue
 
-        if len(signals_queue) < 300:
+        if len(signals_queue) < 500:
             signals_queue.append((node_asset, node_index))
 
 
@@ -419,6 +437,9 @@ def soot_session(task):
     global WIN_STREAK
     global BUDGET
     global GLOBAL_IDX
+    global SHOW_META
+    global BAD_DIRECTION
+    global BAD_ENTRIES
 
     TOTAL_SEEN +=1
 
@@ -439,10 +460,40 @@ def soot_session(task):
 
     longLevel = None
     shortLevel = None
+    closeLevel = None
     delta = None
+    best_delta = 0
+    best_entry, best_exit = 0, 0
     closedByHand = False
 
+    for first_candle in range(5):
+        for last_candle in range(first_candle, HORIZON_SIZE - 1):
+            l_ing1 = len(candles) - HORIZON_SIZE + first_candle
+            l_ing2 = len(candles) - HORIZON_SIZE + last_candle
+
+            if l_ing1 == l_ing2:
+                continue
+
+            c1 = candles[l_ing1]
+            c2 = candles[l_ing2]
+
+            if abs(c1.c - c2.c) > best_delta:
+                best_delta = abs(c1.c - c2.c)
+                best_entry = l_ing1
+                best_exit = l_ing2
+
+    candles[best_entry].best_entry = True
+    candles[best_exit].best_exit = True
+
+    best_entry_level = candles[best_entry].c
+    best_exit_level = candles[best_exit].c
+    best_delta = abs(int(((best_exit_level - best_entry_level)/best_entry_level)*10000))
+
+
     for horizon in range(HORIZON_SIZE):
+
+        if horizon > 8:
+            SHOW_META = True
 
         f_ind = horizon
         l_ing = len(candles) - HORIZON_SIZE + horizon
@@ -451,10 +502,16 @@ def soot_session(task):
         lastCandleLevel = candles[l_ing-1].c
 
         if not longLevel is None:
-            delta = int(((lastCandleLevel - longLevel)/longLevel)*10000)
+            if closeLevel is None:
+                delta = int(((lastCandleLevel - longLevel)/longLevel)*10000)
+            else:
+                delta = int(((closeLevel - longLevel)/longLevel)*10000)
 
         if not shortLevel is None:
-            delta = int(((shortLevel - lastCandleLevel)/shortLevel)*10000)
+            if closeLevel is None:
+                delta = int(((shortLevel - lastCandleLevel)/shortLevel)*10000)
+            else:
+                delta = int(((shortLevel - closeLevel)/shortLevel)*10000)
 
         img = generateOCHLPicture(candles[f_ind : l_ing], budget_candles = budget_candles)
 
@@ -462,12 +519,20 @@ def soot_session(task):
 
         screen_res = 1920, 1080
 
-        session_perfomance = f"{horizon}/{HORIZON_SIZE-1} | "
+        session_perfomance = f"[{TOTAL_SEEN}] {horizon}:{HORIZON_SIZE-1} "
         WR = int((TOTAL_P / (TOTAL_M+TOTAL_P))*100) if (TOTAL_M+TOTAL_P)>0 else 0
-        session_perfomance += f"{delta}//{TOTAL_DELTA} | {TOTAL_M}/{TOTAL_P}/{TOTAL_SEEN} {WR}% # {WIN_STREAK}"
+        session_perfomance += f"{delta}>>{TOTAL_DELTA}"
+        session_ex = f"<{WIN_STREAK}> {TOTAL_M}/{TOTAL_P} {WR}%"
+
+        if SHOW_META:
+            session_ex += f" <<{best_delta} "
+            if not delta is None:
+                session_ex += f" {int(100*(delta/best_delta))}%>>"
 
         font                   = cv.FONT_HERSHEY_SIMPLEX
         bottomLeftCornerOfText = (10,100)
+        nextTextPlacement = (10,200)
+
         fontScale              = 3
         if not delta is None:
             if delta > 0:
@@ -489,6 +554,15 @@ def soot_session(task):
                    thickness,
                    lineType)
 
+        cv.putText(img,
+                   session_ex,
+                   nextTextPlacement,
+                   font,
+                   fontScale,
+                   fontColor,
+                   thickness,
+                   lineType)
+
         cv.namedWindow(image_descriptor, cv.WINDOW_NORMAL)
         cv.resizeWindow(image_descriptor, 1920, 1080)
 
@@ -498,35 +572,28 @@ def soot_session(task):
         c = cv.waitKey(0) % 256
 
         if c == ord('l'):
-            candles[l_ing-1].long_entry = True
-            candles[l_ing-1].entry_level = candles[l_ing-1].c
-            longLevel = candles[l_ing-1].c
+            if delta is None and horizon <= 5:
+                candles[l_ing-1].long_entry = True
+                candles[l_ing-1].entry_level = candles[l_ing-1].c
+                longLevel = candles[l_ing-1].c
 
         elif c == ord('s'):
-            candles[l_ing-1].short_entry = True
-            candles[l_ing-1].entry_level = candles[l_ing-1].c
-            shortLevel = candles[l_ing-1].c
+            if delta is None and horizon <= 5:
+                candles[l_ing-1].short_entry = True
+                candles[l_ing-1].entry_level = candles[l_ing-1].c
+                shortLevel = candles[l_ing-1].c
 
         elif c == ord('c'):
-
             if not delta is None:
+                closeLevel = candles[l_ing-1].c
+                candles[l_ing-1].exit = True
+                candles[l_ing-1].exit_level = candles[l_ing-1].c
 
-                closedByHand = True
-                TOTAL_DELTA += delta
-                BUDGET.append(TOTAL_DELTA)
-                if delta > 0:
-                    TOTAL_P += 1
-                    WIN_STREAK = 0 if WIN_STREAK < 0 else WIN_STREAK + 1
-                elif delta < 0:
-                    TOTAL_M += 1
-                    WIN_STREAK = 0 if WIN_STREAK > 0 else WIN_STREAK - 1
-***REMOVED***
-        else:
-            print("HOLDING")
 
         cv.destroyAllWindows()
 
-    if not delta is None and not closedByHand:
+    if not delta is None:
+
         TOTAL_DELTA += delta
         BUDGET.append(TOTAL_DELTA)
 
@@ -537,6 +604,24 @@ def soot_session(task):
         elif delta < 0:
             WIN_STREAK = 0 if WIN_STREAK > 0 else WIN_STREAK - 1
             TOTAL_M += 1
+
+        if best_entry_level < best_exit_level and longLevel:
+            if delta < 0:
+                BAD_ENTRIES +=1
+        elif best_entry_level < best_exit_level and shortLevel:
+            if delta < 0:
+                BAD_DIRECTION +=1
+
+
+        if best_entry_level > best_exit_level and shortLevel:
+            if delta < 0:
+                BAD_ENTRIES +=1
+        elif best_entry_level > best_exit_level and longLevel:
+            if delta < 0:
+                BAD_DIRECTION +=1
+
+
+    SHOW_META = False
 
 
 ***REMOVED***
