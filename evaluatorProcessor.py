@@ -1,10 +1,10 @@
-***REMOVED***
-***REMOVED***
-***REMOVED***
+import json
+import socket
+import os
 import cv2 as cv
 
 import random
-***REMOVED***
+import time
 
 from talib import ATR as talibATR
 from talib import RSI as talibRSI
@@ -31,9 +31,9 @@ from talib import TRIMA as talibTRIMA
 from talib import WMA as talibWMA
 
 import numpy as np
-***REMOVED***
+import csv
 import statistics
-***REMOVED***
+import sys
 import math
 
 from scipy.signal import find_peaks
@@ -51,16 +51,16 @@ VALIDATION_MODE = False
 MA_LAG = 200
 #MA_LAG = 300
 LOG_TOLERANCE = 3
-FETCHER_***REMOVED***
+FETCHER_PORT = 7777
 INTERFACE_PORT = 6666
 VISUALISE = False
 #VISUALISE = True
 LOGGING = True
 #LOGGING = False
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
+timeframe = 30
+#timeframe = 1
+#timeframe = 4
 RANDOM = None
 SIGNALS_LOG = []
 RECORD_STATS = True
@@ -352,7 +352,7 @@ def make_image_snapshot(variant_candles, variant_indicators, p1, p2):
     #simple_log(variant_candles)
     #simple_log(variant_indicators)
     def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
-***REMOVED***
+        try:
             X = zone[0]
             Y = zone[1]
             dx = zone[2] - X
@@ -366,7 +366,7 @@ def make_image_snapshot(variant_candles, variant_indicators, p1, p2):
             pass
 
     def drawLineInZone(image,zone ,x1,y1,x2,y2, col, thickness = 1):
-***REMOVED***
+        try:
             X = zone[0]
             Y = zone[1]
             dx = zone[2] - X
@@ -3075,12 +3075,12 @@ class MarketProcessingPayload(Payload):
     def recvall(self, sock):
         BUFF_SIZE = 4096 # 4 KiB
         data = b''
-    ***REMOVED***
+        while True:
             part = sock.recv(BUFF_SIZE)
             data += part
             if len(part) < BUFF_SIZE:
                 # either 0 or end of data
-    ***REMOVED***
+                break
         return data
 
     def fetch_market_data(self, feedback = None):
@@ -3091,10 +3091,10 @@ class MarketProcessingPayload(Payload):
 
         HOST = "127.0.0.1"
         data = {}
-        ***REMOVED***
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    ***REMOVED***
-    ***REMOVED***
+        while True:
+            try:
 
                 s.connect((HOST, FETCHER_PORT))
                 data_request = {"asset":TOKEN_NAME}
@@ -3108,14 +3108,14 @@ class MarketProcessingPayload(Payload):
                     global TOKEN_INDEX
                     TOKEN_INDEX = int(data["idx"])
 
-    ***REMOVED***
+            except Exception as e:
                 print(f"Failed to fetch market data: {e}")
                 time.sleep(1)
-                ***REMOVED***
-                ***REMOVED***
+                s.close()
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 continue
             else:
-    ***REMOVED***
+                break
 
 
         return data["O"], data["C"], data["H"], data["L"], data["V"]
@@ -3137,7 +3137,7 @@ class MarketProcessingPayload(Payload):
         message = ""
         # Kind of cooldown on node side
 
-    ***REMOVED***
+        while True:
             # TODO - remove. i just don't wanted to kill my
             # laptop right now
             #time.sleep(0.1)
@@ -3158,7 +3158,7 @@ class MarketProcessingPayload(Payload):
 
             if market_situation == "INIT":
                 message = self.prepare_intro()
-    ***REMOVED***
+                break
 
 
             self.last_tr = self.evaluator.total
@@ -3240,7 +3240,7 @@ class MarketProcessingPayload(Payload):
                 #continue
 
             message = self.prepare_report()
-***REMOVED***
+            break
 
         return json.dumps(message)
 
@@ -3291,7 +3291,7 @@ class MyClientProtocol():
             s.sendall(message.encode("UTF-8"))
 
     def run(self):
-    ***REMOVED***
+        while True:
             message_to_server = self.payload.wait_for_event()
             self.send_signal(message_to_server)
 
@@ -3340,7 +3340,7 @@ if __name__ == '__main__':
     if len(sys.argv) >4:
         FETCHER_PORT = int(sys.argv[4])
     else:
-        FETCHER_***REMOVED***
+        FETCHER_PORT = 7777
 
     if len(sys.argv) > 5:
         INTERFACE_PORT = int(sys.argv[5])

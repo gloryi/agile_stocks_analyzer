@@ -1,127 +1,127 @@
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+import requests
+import json
+import csv
+import datetime
+import socket
+import sys
+import json
+import time
 
 
-***REMOVED***
-***REMOVED***
+PORT = 7777
+#import logging
 
-***REMOVED***
+#import http.client as http_client
 
-***REMOVED***
+#http_client.HTTPConnection.debuglevel = 1
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+# You must initialize logging, otherwise you'll not see debug output.
+#logging.basicConfig()
+#logging.getLogger().setLevel(logging.DEBUG)
+#requests_log = logging.getLogger("requests.packages.urllib3")
+#requests_log.setLevel(logging.DEBUG)
+#requests_log.propagate = True
 
-***REMOVED***
+#############################################################
 
 
-***REMOVED***
-***REMOVED***
+CST = None
+SECURITY_TOKEN = None
 
-***REMOVED***
+def getCreds():
     key = "RGh2krgUm0dVMfGc"
     identifierDict = {"identifier" : "thelastmelancholy@gmail.com",
                         "password" : "2s1e0r6k9o77QWER",
                         "encryptedPassword": "false"}
     headers = {"x-cap-api-key": key}
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+    if not CST is None:
+        headers["cst"] = CST
+    if not SECURITY_TOKEN is None:
+        headers["x-security-token"] = SECURITY_TOKEN
     return identifierDict, headers
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+def prepareRequest(payload):
+    requestData = {}
+    requestHeaders = {}
+    secHeaders, secDict = getCreds()
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+    requestData.update(secHeaders)
+    requestData.update(payload)
+    requestHeaders.update(secDict)
+    return requestData, requestHeaders
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+def intialize():
+    resp = sendPost("/api/v1/session")
+    cst = resp.headers["cst"]
+    global CST
+    global SECURITY_TOKEN
+    security_token = resp.headers["x-security-token"]
+    CST = cst
+    SECURITY_TOKEN = security_token
 
-***REMOVED***
-***REMOVED***
-
-
-***REMOVED***
-
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+def prepareUrl(api):
+    return "https://api-capital.backend-capital.com" + api
 
 
+def sendPost(api, payload={}):
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+    data, headers = prepareRequest(payload)
+    apiUrl = prepareUrl(api)
+    responce = requests.post(apiUrl,
+                                headers = headers,
+                                json    = data)
+    print(">>> ", apiUrl)
+    print("<<< ", responce.status_code)
+    return responce
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
 
-***REMOVED***
-***REMOVED***
+
+def sendGet(api, payload={}, query={}):
+    data, headers = prepareRequest(payload)
+    apiUrl = prepareUrl(api)
+    responce = requests.get(apiUrl,
+                                headers = headers,
+                                json    = data,
+                                params  = query)
+    print(">>> ", apiUrl)
+    print("<<< ", responce.status_code)
+    return responce
+
+def readAssets(filepath = "capital_asset_urls.csv"):
+    with open("capital_asset_urls.csv", "r") as assetsFile:
+        datareader = csv.reader(assetsFile)
+        assets = []
+        for line in datareader:
+           assets.append(line[0])
+        return assets
+
+def prepareTimeParams():
+    nowTime = datetime.datetime.now()
     minTimeFrame = 15
     numFrames = 300
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+    prevTime = nowTime - datetime.timedelta(minutes = minTimeFrame * numFrames)
+    fromT = prevTime.strftime("%Y-%m-%dT%H:%M:%S")
+    maxT = numFrames
+    resolution = f"MINUTE_{minTimeFrame}"
+    toT = nowTime.strftime("%Y-%m-%dT%H:%M:%S")
+    #return {"from" : fromT,"max":maxT,"resolution":resolution,"to":toT}
+    return {"max":maxT,"resolution":resolution}
 
-***REMOVED***
-***REMOVED***
+def prepareDataFetchUrl(asset, timeParams):
+    return f"/api/v1/prices/{asset}"
 
-***REMOVED***
+def extractOCHLV(OCHLVJson):
     O, C, H, L = [], [], [], []
-***REMOVED***
+    for price in OCHLVJson["prices"]:
         O.append(price["openPrice"]["bid"] + price["openPrice"]["ask"]/2)
         C.append(price["closePrice"]["bid"]+ price["closePrice"]["ask"]/2)
         H.append(price["highPrice"]["bid"] + price["highPrice"]["ask"]/2)
         L.append(price["lowPrice"]["bid"]  + price["lowPrice"]["ask"]/2)
-***REMOVED***
-***REMOVED***
+        V.append(price["lastTradedVolume"])
+    return O,C,H,L,V
 
 def processAsset(filename = "test_data.csv"):
-***REMOVED***
+    O, C, H, L, V = [], [], [], [], []
     with open(filename, "r") as ochlfile:
         reader = csv.reader(ochlfile)
         for line in reader:
@@ -130,13 +130,13 @@ def processAsset(filename = "test_data.csv"):
             H.append(float(line[2]))
             L.append(float(line[3]))
             V.append(float(line[4]))
-***REMOVED***
+    return O, C, H, L, V
 
 
 
 
-***REMOVED***
-***REMOVED***
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+print('# Socket created')
 
 try:
     s.bind((HOST, PORT))
@@ -144,15 +144,15 @@ except socket.error as msg:
     print('# Bind failed. ')
     sys.exit()
 
-***REMOVED***
+print('# Socket bind complete')
 
-***REMOVED***
-***REMOVED***
+s.listen(10)
+print('# Socket now listening')
 
 O, C, H, L, V = processAsset()
 slidingWindow = 0
 
-***REMOVED***
+while True:
     print("Cooldown of 0 seconds")
     time.sleep(0)
     conn, addr = s.accept()
@@ -169,9 +169,9 @@ slidingWindow = 0
     slidingWindow += 1
 
     if slice.stop == len(O):
-***REMOVED***
+        break
 
     respData = json.dumps(ochlResponce).encode("UTF-8")
     conn.send(respData)
     conn.close()
-***REMOVED***
+s.close()

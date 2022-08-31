@@ -1,19 +1,19 @@
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+import requests
+import json
+import csv
+import datetime
+import socket
+import sys
+import time
 import random
-***REMOVED***
+import os
 import pathlib
-***REMOVED***
+from _thread import *
 
-***REMOVED***
+a_lock = allocate_lock()
 
-***REMOVED***
-***REMOVED***
+HOST = ''
+PORT = 7777
 LOCAL_FOLDER = os.path.join(os.getcwd(), "various_datasets")
 MODE = "LOCAL"
 
@@ -30,7 +30,7 @@ def list_assets(folder = LOCAL_FOLDER):
 
 def extractOCHLV(filepath):
 
-***REMOVED***
+    O, C, H, L, V = [], [], [], [], []
 
     with open(filepath, "r") as ochlfile:
 
@@ -43,7 +43,7 @@ def extractOCHLV(filepath):
             L.append(float(line[3])*100)
             V.append(float(line[4]))
 
-***REMOVED***
+    return O,C,H,L,V
 
 def initialize_assets():
     global assets_dictionary
@@ -84,17 +84,17 @@ def prepare_requested_prices(asset_name):
 
     target_asset["trailing"] = target_idx + 1
 
-***REMOVED***, target_idx
+    return O, C, H, L, V, target_idx
 
 
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
+def client_handler(conn):
+    with a_lock:
+        try:
             data = conn.recv(10000)
-    ***REMOVED***
-    ***REMOVED***
-    ***REMOVED***
+            rawAsset = data.decode('UTF-8')
+            rawAsset = rawAsset.replace("\n","")
+            assetData = json.loads(rawAsset)
             #asset_id = assetData["asset"]
             #asset_idx = assets_dictionary[asset_id]["trailing"]
 
@@ -104,35 +104,35 @@ def prepare_requested_prices(asset_name):
 
             ochlResponce = {"O" : O, "C" : C, "H" : H, "L": L, "V" : V, "idx": idx}
 
-    ***REMOVED***
-    ***REMOVED***
-    ***REMOVED***
+            respData = json.dumps(ochlResponce).encode("UTF-8")
+            conn.send(respData)
+            conn.close()
             #print("Cooldown of 4 seconds")
             time.sleep(0.5)
-***REMOVED***
+        except Exception as e:
             print(f"(Sockets sucks). {e}")
-    ***REMOVED***
+            conn.close()
 
 
-***REMOVED***
-***REMOVED***
+def accept_connections(ServerSocket):
+    conn, addr = ServerSocket.accept()
     #print(f"{addr} added to processing queue")
-***REMOVED***
+    start_new_thread(client_handler, (conn,))
 
 initialize()
 
-***REMOVED***
-***REMOVED***
-        ***REMOVED***
+while True:
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     except Exception as e:
         print(f"Server could not establish connection {e}")
         continue
     else:
-***REMOVED***
+        break
 
 
-***REMOVED***
+print('# Socket created')
 
 try:
     s.bind((HOST, PORT))
@@ -140,12 +140,12 @@ except socket.error as msg:
     print('# Bind failed. ')
     sys.exit()
 
-***REMOVED***
+print('# Socket bind complete')
 
-***REMOVED***
-***REMOVED***
+s.listen(10)
+print('# Socket now listening')
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
+while True:
+    accept_connections(s)
+s.close()
 

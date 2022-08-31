@@ -1,81 +1,81 @@
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+import requests
+import json
+import csv
+#import logging
 
-***REMOVED***
+#import http.client as http_client
 
-***REMOVED***
+#http_client.HTTPConnection.debuglevel = 1
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+# You must initialize logging, otherwise you'll not see debug output.
+#logging.basicConfig()
+#logging.getLogger().setLevel(logging.DEBUG)
+#requests_log = logging.getLogger("requests.packages.urllib3")
+#requests_log.setLevel(logging.DEBUG)
+#requests_log.propagate = True
 
-***REMOVED***
+#############################################################
 
-***REMOVED***
-***REMOVED***
+CST = None
+SECURITY_TOKEN = None
 
-***REMOVED***
+def getCreds():
     key = "RGh2krgUm0dVMfGc"
     identifierDict = {"identifier" : "thelastmelancholy@gmail.com",
                         "password" : "2s1e0r6k9o77QWER",
                         "encryptedPassword": "false"}
     headers = {"x-cap-api-key": key}
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+    if not CST is None:
+        headers["cst"] = CST
+    if not SECURITY_TOKEN is None:
+        headers["x-security-token"] = SECURITY_TOKEN
     return identifierDict, headers
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+def prepareRequest(payload):
+    requestData = {}
+    requestHeaders = {}
+    secHeaders, secDict = getCreds()
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+    requestData.update(secHeaders)
+    requestData.update(payload)
+    requestHeaders.update(secDict)
+    return requestData, requestHeaders
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+def intialize():
+    resp = sendPost("/api/v1/session")
+    cst = resp.headers["cst"]
+    global CST
+    global SECURITY_TOKEN
+    security_token = resp.headers["x-security-token"]
+    CST = cst
+    SECURITY_TOKEN = security_token
 
-***REMOVED***
-***REMOVED***
+def prepareUrl(api):
+    return "https://api-capital.backend-capital.com" + api
 
 
-***REMOVED***
+def sendPost(api, payload={}):
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+    data, headers = prepareRequest(payload)
+    apiUrl = prepareUrl(api)
+    responce = requests.post(apiUrl,
+                                headers = headers,
+                                json    = data)
+    print(">>> ", apiUrl)
+    print("<<< ", responce.status_code)
+    return responce
 
 
 
 def sendGet(api, payload={}):
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+    data, headers = prepareRequest(payload)
+    apiUrl = prepareUrl(api)
+    responce = requests.get(apiUrl,
+                                headers = headers,
+                                json    = data)
+    print(">>> ", apiUrl)
+    print("<<< ", responce.status_code)
+    return responce
 
 def getWLIds(WLJson):
     for wl in WLJson["watchlists"]:
@@ -92,7 +92,7 @@ def dumpSelected(epics):
             writer.writerow([asset])
 
 
-***REMOVED***
+intialize()
 #"/api/v1/marketnavigation"
 wlItems  = getWLIds(sendGet("/api/v1/watchlists").json())
 print(wlItems)

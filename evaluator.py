@@ -1,10 +1,10 @@
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketClientFactory
-***REMOVED***
+import json
 import random
-***REMOVED***
+import time
 import numpy as np
-from datetime ***REMOVED***delta
+from datetime import timedelta
 import pandas as pd
 import talib
 from talib import ATR as talibATR
@@ -17,17 +17,17 @@ from talib import MA as talibMA
 from collections import namedtuple
 import cv2 as cv
 import numpy as np
-***REMOVED***
+import csv
 
-***REMOVED***
-***REMOVED***
+import socket
+import os
 from tqdm import tqdm
 
 TOKEN_NAME = "UNKNOWN"
 MA_LAG = 200
-***REMOVED***
-***REMOVED***
-***REMOVED***
+timeframe = 30
+#timeframe = 1
+#timeframe = 4
 metaParam1 = 0
 metaParam2 = 0
 metaParam3 = 0
@@ -579,7 +579,7 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
     #print(candles)
     #print(indicators)
     def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
-***REMOVED***
+        try:
             X = zone[0]
             Y = zone[1]
             dx = zone[2] - X
@@ -589,11 +589,11 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
             X2 = int(X + dx*x2)
             Y2 = int(Y + dy*y2)
             cv.rectangle(image,(Y1,X1),(Y2,X2),col,-1)
-***REMOVED***
+        except Exception as e:
             pass
 
     def drawLineInZone(image,zone ,x1,y1,x2,y2, col, thickness = 1):
-***REMOVED***
+        try:
             X = zone[0]
             Y = zone[1]
             dx = zone[2] - X
@@ -603,7 +603,7 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
             X2 = int(X + dx*x2)
             Y2 = int(Y + dy*y2)
             cv.line(image,(Y1,X1),(Y2,X2),col,thickness)
-***REMOVED***
+        except Exception as e:
             pass
 
     def getCandleCol(candle):
@@ -903,7 +903,7 @@ class MarketProcessingPayload(Payload):
 
     def extractOCHLV(self, filename = "test_data.csv"):
         if filename not in cachedData:
-        ***REMOVED***
+            O, C, H, L, V = [], [], [], [], []
             with open(filename, "r") as ochlfile:
                 reader = csv.reader(ochlfile)
                 for line in reader:

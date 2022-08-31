@@ -1,23 +1,23 @@
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+import requests
+import json
+import csv
+import datetime
+import socket
+import sys
+import json
+import time
+import os
 import random
 import cv2 as cv
 import numpy as np
-***REMOVED***
+import sys
 import tqdm
 
 #====================================================>
 #=========== VALIDATOR SETTINGS
 #====================================================>
 
-***REMOVED***
+PORT = 7777
 WINDOW_SIZE = 1000
 MAX_DEPTH = 1
 RANDOM_MODE = "R"
@@ -55,7 +55,7 @@ class simpleCandle():
 
 def generateOCHLPicture(candles, _H = None, _W = None):
     def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
-***REMOVED***
+        try:
             X = zone[0]
             Y = zone[1]
             dx = zone[2] - X
@@ -69,7 +69,7 @@ def generateOCHLPicture(candles, _H = None, _W = None):
             pass
 
     def drawLineInZone(image,zone ,x1,y1,x2,y2, col, thickness = 1):
-***REMOVED***
+        try:
             X = zone[0]
             Y = zone[1]
             dx = zone[2] - X
@@ -184,7 +184,7 @@ def generateOCHLPicture(candles, _H = None, _W = None):
 def processAsset(filename = os.path.join(os.getcwd(),
                                          "ValidationDatasets",
                                          DATASET)):
-***REMOVED***
+    O, C, H, L, V = [], [], [], [], []
 
     with open(filename, "r") as ochlfile:
         reader = csv.reader(ochlfile)
@@ -200,27 +200,27 @@ def processAsset(filename = os.path.join(os.getcwd(),
             L.append(float(line[_L])*100)
             V.append(v)
 
-***REMOVED***
+    return O, C, H, L, V
 
 #====================================================>
 #=========== INTERFACE
 #====================================================>
 
 def initialize_socket():
-    ***REMOVED***
-    ***REMOVED***
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print('# Socket created')
 
-***REMOVED***
+    try:
         HOST = "0.0.0.0"
-***REMOVED***
-***REMOVED***
+        s.bind((HOST, PORT))
+    except socket.error as msg:
         print('# Bind failed. ')
         sys.exit()
 
-    ***REMOVED***
+    print('# Socket bind complete')
 
-    ***REMOVED***
-    ***REMOVED***
+    s.listen(10)
+    print('# Socket now listening')
 
     return s
 
@@ -410,7 +410,7 @@ MAX_DEPTH = int(TRN)
 if len(sys.argv) >3:
     PORT = int(sys.argv[3])
 else:
-    ***REMOVED***
+    PORT = 7777
 
 first_index = lambda _ : _
 last_index = lambda _ : _ + WINDOW_SIZE
@@ -425,7 +425,7 @@ s = initialize_socket()
 # window size to maximum test depts
 #====================================================>
 
-***REMOVED***
+while True:
 
     O, C, H, L, V = processAsset()
 
@@ -444,9 +444,9 @@ s = initialize_socket()
 
         conn, addr = s.accept()
         data = conn.recv(10000)
-***REMOVED***
-***REMOVED***
-***REMOVED***
+        rawAsset = data.decode('UTF-8')
+        rawAsset = rawAsset.replace("\n","")
+        assetData = json.loads(rawAsset)
         asset = assetData["asset"]
 
         first_candle = first_index(sliding_window_index)
@@ -479,9 +479,9 @@ s = initialize_socket()
 
         sliding_window_index += 1
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
+        respData = json.dumps(ochlResponce).encode("UTF-8")
+        conn.send(respData)
+        conn.close()
 
 #====================================================>
 #=========== SIGNALS REVIEW AND STATS SAVING
@@ -501,7 +501,7 @@ s = initialize_socket()
         last_candle = last_index(sliding_window_index)
         sliding_window_index += 1
 
-***REMOVED***
+        try:
             candles.append(simpleCandle(O[last_candle],
                                         C[last_candle],
                                         H[last_candle],
@@ -528,4 +528,4 @@ s = initialize_socket()
     break
 
 
-***REMOVED***
+s.close()

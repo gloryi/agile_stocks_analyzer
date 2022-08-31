@@ -1,8 +1,8 @@
-***REMOVED***
-***REMOVED***
+import os
+import csv
 from collections import defaultdict, namedtuple
-***REMOVED***
-***REMOVED***
+import sys
+import csv
 from scipy.stats import pearsonr
 from scipy.stats import spearmanr
 import numpy as np
@@ -41,7 +41,7 @@ def extract_num_samples(filename):
         filepart = filepart.replace("D", "").replace(".csv", "")
         if filepart.isnumeric():
             num_samples = int(filepart)
-***REMOVED***
+            break
 
     if num_samples == 0:
         raise Exception(f"File {filename} does not follow stats file notation")
@@ -77,9 +77,9 @@ def process_stat_file(filename, extracted_features = defaultdict(list)):
 
         for feature_n in range(len(features_list[0])):
             header = features_list[0][feature_n]
-    ***REMOVED***
+            try:
                 extracted_features[header].append(float(features_list[value_n][feature_n]))
-    ***REMOVED***
+            except Exception as e:
                 #value = 1 if eval(features_list[value_n][feature_n]) else 0
                 extracted_features[header].append(0)
 

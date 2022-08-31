@@ -1,6 +1,6 @@
-***REMOVED***
-***REMOVED***
-***REMOVED***
+import csv
+import sys
+import os
 import pathlib
 
 RAW_DIRECTORY = os.path.join(os.getcwd(), "raw_datasets")
@@ -78,7 +78,7 @@ def extractOCHLV(filepath,
                  skip_weekends = False,
                  separator=","):
 
-***REMOVED***
+    O, C, H, L, V = [], [], [], [], []
 
     with open(filepath, "r") as ochlfile:
 
@@ -99,15 +99,15 @@ def extractOCHLV(filepath,
             L.append(float(line[l_ind])*100)
             V.append(v)
 
-***REMOVED***
+    return O,C,H,L,V
 
 def dumpOCHLV(filepath, O, C, H, L, V):
 
     with open(filepath, "w+") as ochlfile:
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
+        writer = csv.writer(ochlfile)
+        for o,c,h,l,v in zip(O,C,H,L,V):
+            writer.writerow([o,c,h,l,v])
 
 
 process_assets()

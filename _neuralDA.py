@@ -1,6 +1,6 @@
-***REMOVED***
-***REMOVED***
-***REMOVED***
+import csv
+import sys
+import os
 import pathlib
 from scipy.signal import find_peaks
 import numpy as np
@@ -21,7 +21,7 @@ def list_assets(folder = LOCAL_FOLDER):
 
 def extractOCHLV(filepath):
 
-***REMOVED***
+    O, C, H, L, V = [], [], [], [], []
 
     with open(filepath, "r") as ochlfile:
 
@@ -34,7 +34,7 @@ def extractOCHLV(filepath):
             L.append(float(line[3])*100)
             V.append(float(line[4]))
 
-***REMOVED***
+    return O,C,H,L,V
 
 def extract_prices():
 
@@ -264,7 +264,7 @@ def record_dataset(filepath = "neural_set_bwv.csv"):
             max_dset -= 1
             writer.writerow(line)
             if not max_dset:
-    ***REMOVED***
+                break
 
 
 

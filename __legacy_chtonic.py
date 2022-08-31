@@ -1,18 +1,18 @@
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketClientFactory
-***REMOVED***
+import json
 import random
-***REMOVED***
+import time
 import numpy as np
-from datetime ***REMOVED***delta
+from datetime import timedelta
 import pandas as pd
 from talib import RSI
 from collections import namedtuple
 import cv2 as cv
 import numpy as np
 
-***REMOVED***
-***REMOVED***
+import socket
+import json
 
 TOKEN_NAME = "UNKNOWN"
 KILL_RECEIVED = False
@@ -213,7 +213,7 @@ class MarketProcessingPayload(Payload):
     def fetch_market_data(self):
 
         HOST = "127.0.0.1"
-        ***REMOVED***
+        PORT = 7777
         data = {}
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((HOST, PORT))
@@ -343,7 +343,7 @@ class MarketProcessingPayload(Payload):
     def wait_for_event(self):
         message = ""
         time_for_next_update = 0
-    ***REMOVED***
+        while True:
             #time.sleep(time_for_next_update*60)
             O, C, H, L = self.fetch_market_data()
             market_situation = self.trendByHA(O,C,H,L)
@@ -358,7 +358,7 @@ class MarketProcessingPayload(Payload):
             message = {}
             message["text"] = self.token + " || " + market_situation + " at " + str(O[-1])
             message["image"] = image_path
-***REMOVED***
+            break
 
         return json.dumps(message)
 
@@ -416,7 +416,7 @@ class MyClientProtocol(WebSocketClientProtocol):
 
 if __name__ == '__main__':
 
-    ***REMOVED***
+    import sys
 
     from twisted.python import log
     from twisted.internet import reactor
@@ -429,7 +429,7 @@ if __name__ == '__main__':
     factory.protocol = MyClientProtocol
 
     reactor.connectTCP("127.0.0.1", 9000, factory)
-***REMOVED***
+    try:
         reactor.run()
     except Exception:
         print("Proably sigterm was received")

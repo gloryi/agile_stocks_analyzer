@@ -1,9 +1,9 @@
 import subprocess
-***REMOVED***
-***REMOVED***
+import time
+import os
 import signal
-***REMOVED***
-***REMOVED***
+import csv
+import sys
 import random
 import pathlib
 
@@ -66,7 +66,7 @@ evaluators = []
 
 assets = select_assets(N_NODES)
 
-***REMOVED***
+for asset in assets:
     evaluator = launch_test(asset)
     evaluators.append(evaluator)
 

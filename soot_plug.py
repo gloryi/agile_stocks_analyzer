@@ -1,20 +1,20 @@
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+import requests
+import json
+import csv
+import datetime
+import socket
+import sys
+import json
+import time
 
-***REMOVED***
+import os
 import random
 import cv2 as cv
 import numpy as np
 import tqdm
 import pathlib
 
-***REMOVED***
+from _thread import *
 
 PORT = 6666
 HORIZON_SIZE = 10
@@ -31,7 +31,7 @@ GLOBAL_IDX = 0
 SHOW_META = False
 BUDGET = []
 
-***REMOVED***
+a_lock = allocate_lock()
 task_lock = allocate_lock()
 
 signals_queue = []
@@ -69,7 +69,7 @@ class simpleCandle():
 
 def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
     def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
-***REMOVED***
+        try:
             X = zone[0]
             Y = zone[1]
             dx = zone[2] - X
@@ -83,7 +83,7 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
             pass
 
     def drawLineInZone(image,zone ,x1,y1,x2,y2, col, thickness = 1):
-***REMOVED***
+        try:
             X = zone[0]
             Y = zone[1]
             dx = zone[2] - X
@@ -197,7 +197,7 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
         for i in range(len(candles)):
             if 0 == ((candles[i].index + GLOBAL_IDX) % compression_level):
                 first_idx = i
-    ***REMOVED***
+                break
 
         n_selected = len(candles)
 
@@ -323,7 +323,7 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
 
 def extract_ochl(filepath):
 
-***REMOVED***
+    O, C, H, L, V = [], [], [], [], []
 
     with open(filepath, "r") as ochlfile:
 
@@ -336,7 +336,7 @@ def extract_ochl(filepath):
             L.append(float(line[3])*100)
             V.append(float(line[4])*100)
 
-***REMOVED***
+    return O,C,H,L,V
 
 def list_assets(folder = LOCAL_FOLDER):
     assets = []
@@ -391,34 +391,34 @@ def lineup_candles(sequence):
 #====================================================>
 
 def initialize_socket():
-    ***REMOVED***
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     print('* Socket created')
 
-***REMOVED***
+    try:
         HOST = "0.0.0.0"
-***REMOVED***
-***REMOVED***
+        s.bind((HOST, PORT))
+    except socket.error as msg:
         print('* Bind failed. ')
         sys.exit()
 
     print('* Socket bind complete')
 
-    ***REMOVED***
+    s.listen(10)
     print('* Socket now listening')
 
     return s
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
+def client_handler(conn):
+    with a_lock:
+        data = conn.recv(1024)
         node_message = data.decode('UTF-8')
         message_parsed = json.loads(node_message)
 
         node_asset = message_parsed["token"]
         node_index = message_parsed["idx"]
 
-***REMOVED***
+        conn.close()
 
     with task_lock:
         global signals_queue
@@ -624,10 +624,10 @@ def soot_session(task):
     SHOW_META = False
 
 
-***REMOVED***
-***REMOVED***
-    ***REMOVED***
-    ***REMOVED***
+def accept_connections(ServerSocket):
+    while True:
+        conn, addr = ServerSocket.accept()
+        start_new_thread(client_handler, (conn,))
 
 def check_new_soot_items():
 
@@ -655,7 +655,7 @@ initialize_files_structure()
 
 start_new_thread(accept_connections, (s,))
 
-***REMOVED***
+while True:
     check_new_soot_items()
 
-***REMOVED***
+s.close()

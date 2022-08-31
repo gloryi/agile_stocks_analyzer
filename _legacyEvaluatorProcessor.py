@@ -1,10 +1,10 @@
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketClientFactory
-***REMOVED***
+import json
 import random
-***REMOVED***
+import time
 import numpy as np
-from datetime ***REMOVED***delta
+from datetime import timedelta
 import pandas as pd
 import talib
 from talib import ATR as talibATR
@@ -18,21 +18,21 @@ from collections import namedtuple
 import cv2 as cv
 import numpy as np
 import numpy as np
-***REMOVED***
+import csv
 
-***REMOVED***
-***REMOVED***
+import socket
+import os
 from tqdm import tqdm
 
 TOKEN_NAME = "UNKNOWN"
 TEST_CASE = "UNKNOWN"
 MA_LAG = 200
-***REMOVED***
+timeframe = 30
 VALIDATION_MODE = False
 LOG_TOLERANCE = 3
-***REMOVED***
-***REMOVED***
-***REMOVED***
+PORT = 7777
+#timeframe = 1
+#timeframe = 4
 
 class RandomMachine():
     def __init__(self, initial_seed, keys_depth = 100):
@@ -664,7 +664,7 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
     #print(candles)
     #print(indicators)
     def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
-***REMOVED***
+        try:
             X = zone[0]
             Y = zone[1]
             dx = zone[2] - X
@@ -674,11 +674,11 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
             X2 = int(X + dx*x2)
             Y2 = int(Y + dy*y2)
             cv.rectangle(image,(Y1,X1),(Y2,X2),col,-1)
-***REMOVED***
+        except Exception as e:
             pass
 
     def drawLineInZone(image,zone ,x1,y1,x2,y2, col, thickness = 1):
-***REMOVED***
+        try:
             X = zone[0]
             Y = zone[1]
             dx = zone[2] - X
@@ -688,7 +688,7 @@ def generateOCHLPicture(candles, indicators, p1, p2 ):
             X2 = int(X + dx*x2)
             Y2 = int(Y + dy*y2)
             cv.line(image,(Y1,X1),(Y2,X2),col,thickness)
-***REMOVED***
+        except Exception as e:
             pass
 
     def getCandleCol(candle):
@@ -1161,12 +1161,12 @@ class MarketProcessingPayload(Payload):
     def recvall(self, sock):
         BUFF_SIZE = 4096 # 4 KiB
         data = b''
-    ***REMOVED***
+        while True:
             part = sock.recv(BUFF_SIZE)
             data += part
             if len(part) < BUFF_SIZE:
                 # either 0 or end of data
-    ***REMOVED***
+                break
         return data
 
     def fetch_market_data(self, feedback = None):
@@ -1199,7 +1199,7 @@ class MarketProcessingPayload(Payload):
     def wait_for_event(self):
         message = ""
         time_for_next_update = 0
-    ***REMOVED***
+        while True:
             time.sleep(time_for_next_update*60/5)
             O, C, H, L, V = self.fetch_market_data(self.prepare_feedback())
             self.dump_stats()
@@ -1210,7 +1210,7 @@ class MarketProcessingPayload(Payload):
                 message["text"] = self.token + " \n " + "INTIALIZED"
                 message["text"] += " \n " + self.evaluator.generatedStats
                 message["image"] = self.evaluator.image_path
-    ***REMOVED***
+                break
 
             forecastTR = self.evaluator.total
 
@@ -1258,7 +1258,7 @@ class MarketProcessingPayload(Payload):
                 metaUpd = f"{round(self.priorTR*100,1)}% >>> {round(self.tweakedTR*100,1)}%"
                 message["text"] += "\n"+metaUpd
                 message["image"] = self.evaluator.image_path
-***REMOVED***
+            break
 
         return json.dumps(message)
 
@@ -1310,7 +1310,7 @@ class MyClientProtocol(WebSocketClientProtocol):
 
 if __name__ == '__main__':
 
-    ***REMOVED***
+    import sys
 
     from twisted.python import log
     from twisted.internet import reactor
@@ -1351,7 +1351,7 @@ if __name__ == '__main__':
     if len(sys.argv) >4:
         PORT = int(sys.argv[4])
     else:
-        ***REMOVED***
+        PORT = 7777
 
     with open(f"bestMetas{timeframe}.json", "r") as bestEvaluatedFile:
         bestKnownMetas = json.load(bestEvaluatedFile)
@@ -1366,7 +1366,7 @@ if __name__ == '__main__':
     factory.protocol = MyClientProtocol
 
     reactor.connectTCP("127.0.0.1", 9000, factory)
-***REMOVED***
+    try:
         reactor.run()
     except Exception:
         simple_log("Proably sigterm was received")

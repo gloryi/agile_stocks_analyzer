@@ -1,8 +1,8 @@
 import subprocess
-***REMOVED***
-***REMOVED***
+import time
+import os
 import signal
-***REMOVED***
+import csv
 
 #MARKETS_MODEL = "WEEKEND"
 MARKETS_MODEL = "INTRAWEEK"
@@ -11,13 +11,13 @@ MARKETS_MODEL = "INTRAWEEK"
 CONFIG_DIRECTORY = os.path.join(os.getcwd(), "API_CONFIG")
 
 
-***REMOVED***
+def readAssets(filepath = "capital_asset_urls.csv"):
     with open(filepath, "r") as assetsFile:
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+        datareader = csv.reader(assetsFile)
+        assets = []
+        for line in datareader:
+           assets.append(line[0])
+        return assets
 
 
 list_of_tokens = readAssets(os.path.join(CONFIG_DIRECTORY,
@@ -27,22 +27,22 @@ project_path = os.getcwd()
 
 casted_processes = []
 
-p = subprocess.Popen(["python3", os.path.join(project_path,"telegram_proxy.py")])
+p = subprocess.Popen(["python3", os.path.join(project_path,"telegram_proxy.py"),"6666"])
 casted_processes.append(p)
 
 p = subprocess.Popen(["python3", os.path.join(project_path,"dataFetcher.py")])
 casted_processes.append(p)
-#p = subprocess.Popen(["python3", os.path.join(project_path,"testDataFetcher.py")])
-#casted_processes.append(p)
+
+time.sleep(10)
 
 for token in list_of_tokens:
     time.sleep(2)
-    p = subprocess.Popen(["python3", os.path.join(project_path,"client.py")
+    p = subprocess.Popen(["python3", os.path.join(project_path,"evaluatorProcessor.py")
                        , token, "MarketsPayload"])
     casted_processes.append(p)
 
 try:
-	***REMOVED***
+	while True:
 		time.sleep(200)
 
 except KeyboardInterrupt:

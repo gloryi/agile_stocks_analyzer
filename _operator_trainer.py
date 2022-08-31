@@ -1,23 +1,23 @@
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
+import requests
+import json
+import csv
+import datetime
+import socket
+import sys
+import json
+import time
+import os
 import random
 import cv2 as cv
 import numpy as np
-***REMOVED***
+import sys
 import tqdm
 
 #====================================================>
 #=========== VALIDATOR SETTINGS
 #====================================================>
 
-***REMOVED***
+PORT = 7777
 WINDOW_SIZE = 1000
 MAX_DEPTH = 1
 RANDOM_MODE = "R"
@@ -38,7 +38,7 @@ DATASET_DIRECTORY = os.path.join(os.getcwd(), "datasetOP")
 
 def processAsset(filename):
 
-***REMOVED***
+    O, C, H, L, V = [], [], [], [], []
 
     with open(filename, "r") as ochlfile:
 
@@ -55,27 +55,27 @@ def processAsset(filename):
             L.append(float(line[3])*100)
             V.append(v)
 
-***REMOVED***
+    return O, C, H, L, V
 
 #====================================================>
 #=========== INTERFACE
 #====================================================>
 
 def initialize_socket():
-    ***REMOVED***
-    ***REMOVED***
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print('# Socket created')
 
-***REMOVED***
+    try:
         HOST = "0.0.0.0"
-***REMOVED***
-***REMOVED***
+        s.bind((HOST, PORT))
+    except socket.error as msg:
         print('# Bind failed. ')
         sys.exit()
 
-    ***REMOVED***
+    print('# Socket bind complete')
 
-    ***REMOVED***
-    ***REMOVED***
+    s.listen(10)
+    print('# Socket now listening')
 
     return s
 
@@ -120,7 +120,7 @@ s = initialize_socket()
 #=========== SENDING ASSETS DATA TO EVALUATOR
 #====================================================>
 
-***REMOVED***
+while True:
 
     O, C, H, L, V = processAsset(os.path.join(DATASET_DIRECTORY, f"{ASSET}.csv"))
 
@@ -137,9 +137,9 @@ s = initialize_socket()
 
         conn, addr = s.accept()
         data = conn.recv(10000)
-***REMOVED***
-***REMOVED***
-***REMOVED***
+        rawAsset = data.decode('UTF-8')
+        rawAsset = rawAsset.replace("\n","")
+        assetData = json.loads(rawAsset)
         asset = assetData["asset"]
 
         first_candle = first_index(sliding_window_index)
@@ -172,9 +172,9 @@ s = initialize_socket()
 
         sliding_window_index += 1
 
-***REMOVED***
-***REMOVED***
-***REMOVED***
+        respData = json.dumps(ochlResponce).encode("UTF-8")
+        conn.send(respData)
+        conn.close()
 
 #====================================================>
 #=========== SIGNALS REVIEW AND STATS SAVING
@@ -194,7 +194,7 @@ s = initialize_socket()
         last_candle = last_index(sliding_window_index)
         sliding_window_index += 1
 
-***REMOVED***
+        try:
             candles.append(simpleCandle(O[last_candle],
                                         C[last_candle],
                                         H[last_candle],
@@ -221,4 +221,4 @@ s = initialize_socket()
     break
 
 
-***REMOVED***
+s.close()

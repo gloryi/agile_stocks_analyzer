@@ -1,9 +1,9 @@
 import subprocess
-***REMOVED***
-***REMOVED***
+import time
+import os
 import signal
-***REMOVED***
-***REMOVED***
+import csv
+import sys
 
 TRN1 = 500
 TRN2 = 1000
@@ -80,9 +80,9 @@ evaluation_server_plug = subprocess.Popen(["python3",
 validators = []
 evaluators = []
 
-***REMOVED***
+#############################################################
 ################## FIRST LOAD
-***REMOVED***
+#############################################################
 if TEST_SET == 0:
     validator, evaluator = launch_test("AKMENS", TRN2, 7780)
     validators.append(validator)
@@ -102,9 +102,9 @@ if TEST_SET == 0:
     suspend_current(validators, evaluators)
 
 
-***REMOVED***
+#############################################################
 ################## SECOND LOAD
-***REMOVED***
+#############################################################
 if TEST_SET == 1:
 
     validator, evaluator = launch_test("ORCHID", TRN1, 7778)
@@ -122,9 +122,9 @@ if TEST_SET == 1:
 
     suspend_current(validators, evaluators)
 
-***REMOVED***
+#############################################################
 ################## THIRD LOAD
-***REMOVED***
+#############################################################
 if TEST_SET == 2:
 
     validator, evaluator = launch_test("R", TRN2, 7782)
