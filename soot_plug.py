@@ -17,7 +17,7 @@ import pathlib
 from _thread import *
 
 PORT = 6666
-HORIZON_SIZE = 10
+HORIZON_SIZE = 100
 DEPTH = 1000
 INITIAL_OFFSET = 550
 TOTAL_DELTA = 0
@@ -63,6 +63,7 @@ class simpleCandle():
         self.index = index
         self.best_entry = False
         self.best_exit = False
+        self.initial = False
 
     def ochl(self):
         return self.o, self.c, self.h, self.l
@@ -149,6 +150,10 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
         if candle.exit:
             eline = fitTozone(candle.exit_level, minP, maxP)
             drawLineInZone(img, zone, 1-eline,(i+0.5-5)/depth,1-eline,1,(200,0,0), thickness = 10)
+
+        if candle.initial:
+            drawLineInZone(img, zone, 1,(i+0.5)/depth,0,(i+0.5)/depth,col,thickness=3)
+
 
 
 
@@ -466,21 +471,23 @@ def soot_session(task):
     best_entry, best_exit = 0, 0
     closedByHand = False
 
+    candles[-HORIZON_SIZE].initial = True
+
     for first_candle in range(5):
         for last_candle in range(first_candle, HORIZON_SIZE - 1):
-            l_ing1 = len(candles) - HORIZON_SIZE + first_candle
-            l_ing2 = len(candles) - HORIZON_SIZE + last_candle
+            last_ind1 = len(candles) - HORIZON_SIZE + first_candle
+            last_ind2 = len(candles) - HORIZON_SIZE + last_candle
 
-            if l_ing1 == l_ing2:
+            if last_ind1 == last_ind2:
                 continue
 
-            c1 = candles[l_ing1]
-            c2 = candles[l_ing2]
+            c1 = candles[last_ind1]
+            c2 = candles[last_ind2]
 
             if abs(c1.c - c2.c) > best_delta:
                 best_delta = abs(c1.c - c2.c)
-                best_entry = l_ing1
-                best_exit = l_ing2
+                best_entry = last_ind1
+                best_exit = last_ind2
 
     candles[best_entry].best_entry = True
     candles[best_exit].best_exit = True
@@ -489,17 +496,19 @@ def soot_session(task):
     best_exit_level = candles[best_exit].c
     best_delta = abs(int(((best_exit_level - best_entry_level)/best_entry_level)*10000))
 
+    HORIZON_STEP = 10
 
-    for horizon in range(HORIZON_SIZE):
 
-        if horizon > 8:
+    for horizon in range(0, HORIZON_SIZE, HORIZON_STEP):
+
+        if horizon > HORIZON_SIZE*0.8:
             SHOW_META = True
 
         f_ind = horizon
-        l_ing = len(candles) - HORIZON_SIZE + horizon
+        last_ind = len(candles) - HORIZON_SIZE + horizon
         image_descriptor = f'{asset_name} || {horizon}/{HORIZON_SIZE}'
 
-        lastCandleLevel = candles[l_ing-1].c
+        lastCandleLevel = candles[last_ind-1].c
 
         if not longLevel is None:
             if closeLevel is None:
@@ -513,7 +522,7 @@ def soot_session(task):
             else:
                 delta = int(((shortLevel - closeLevel)/shortLevel)*10000)
 
-        img = generateOCHLPicture(candles[f_ind : l_ing], budget_candles = budget_candles)
+        img = generateOCHLPicture(candles[f_ind : last_ind], budget_candles = budget_candles)
 
         w, h = img.shape[1], img.shape[0]
 
@@ -572,22 +581,22 @@ def soot_session(task):
         c = cv.waitKey(0) % 256
 
         if c == ord('l'):
-            if delta is None and horizon <= 5:
-                candles[l_ing-1].long_entry = True
-                candles[l_ing-1].entry_level = candles[l_ing-1].c
-                longLevel = candles[l_ing-1].c
+            if delta is None and horizon <= HORIZON_SIZE * 0.5:
+                candles[last_ind-1].long_entry = True
+                candles[last_ind-1].entry_level = lastCandleLevel
+                longLevel = lastCandleLevel
 
         elif c == ord('s'):
-            if delta is None and horizon <= 5:
-                candles[l_ing-1].short_entry = True
-                candles[l_ing-1].entry_level = candles[l_ing-1].c
-                shortLevel = candles[l_ing-1].c
+            if delta is None and horizon <= HORIZON_SIZE * 0.5:
+                candles[last_ind-1].short_entry = True
+                candles[last_ind-1].entry_level = lastCandleLevel
+                shortLevel = lastCandleLevel
 
         elif c == ord('c'):
             if not delta is None:
-                closeLevel = candles[l_ing-1].c
-                candles[l_ing-1].exit = True
-                candles[l_ing-1].exit_level = candles[l_ing-1].c
+                closeLevel = lastCandleLevel
+                candles[last_ind-1].exit = True
+                candles[last_ind-1].exit_level = lastCandleLevel
 
 
         cv.destroyAllWindows()

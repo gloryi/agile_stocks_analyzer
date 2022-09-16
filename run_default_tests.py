@@ -8,7 +8,7 @@ import sys
 TRN1 = 500
 TRN2 = 1000
 SILENT = True
-EVALUATOR = "evaluatorProcessor.py"
+EVALUATOR = "neonEvaluator.py"
 
 
 
@@ -23,6 +23,7 @@ def launch_test(TEST_MODE, TRN_MODE, PORT):
     time.sleep(2)
     evaluator = subprocess.Popen(["python3", os.path.join(project_path, EVALUATOR),
                         TOKEN_NAME, "V", TEST_MODE,  str(PORT)], stdout=subprocess.DEVNULL)
+                        #TOKEN_NAME, "V", TEST_MODE,  str(PORT)])
     time.sleep(2)
 
     return validator, evaluator
@@ -73,7 +74,7 @@ except Exception as e:
 project_path = os.getcwd()
 
 evaluation_server_plug = subprocess.Popen(["python3",
-                                           os.path.join(project_path,"_validator_server_plug.py")],
+                                           os.path.join(project_path,"_validator_server_plug.py"), "6666"],
                                           stdout = subprocess.DEVNULL)
 
 

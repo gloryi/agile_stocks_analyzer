@@ -6,6 +6,7 @@ import socket
 import sys
 import time
 import os
+from api_keys import KEY, CREDS_DICT
 
 HOST = ''
 PORT = 7777
@@ -19,16 +20,12 @@ CST = None
 SECURITY_TOKEN = None
 
 def getCreds():
-    key = "RGh2krgUm0dVMfGc"
-    identifierDict = {"identifier" : "thelastmelancholy@gmail.com",
-                        "password" : "2s1e0r6k9o77QWER",
-                        "encryptedPassword": "false"}
-    headers = {"x-cap-api-key": key}
+    headers = {"x-cap-api-key": KEY}
     if not CST is None:
         headers["cst"] = CST
     if not SECURITY_TOKEN is None:
         headers["x-security-token"] = SECURITY_TOKEN
-    return identifierDict, headers
+    return CREDS_DICT, headers
 
 def prepareRequest(payload):
     requestData = {}

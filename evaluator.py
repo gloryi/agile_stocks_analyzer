@@ -1062,8 +1062,8 @@ def tweakMetaParams():
                         for w6 in [1,2]:
                             for w7 in [1,2]:
                                 for w8 in [1,2]:
-                                    for tp in range(2,7):
-                                        for sl in range(1,tp):
+                                    for sl in range(1, 2):
+                                        for tp in range(sl+1, 8):
                                             metaParam1 = w1
                                             metaParam2 = w2
                                             metaParam3 = w3

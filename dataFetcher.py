@@ -7,6 +7,7 @@ import sys
 import json
 import time
 from _thread import *
+from api_keys import KEY, CREDS_DICT
 
 a_lock = allocate_lock()
 
@@ -32,16 +33,12 @@ CST = None
 SECURITY_TOKEN = None
 
 def getCreds():
-    key = "KRagJXLchf8wk2n8"
-    identifierDict = {"identifier" : "thelastmelancholy@gmail.com",
-                        "password" : "2s1e0r6k9o77QWER",
-                        "encryptedPassword": "false"}
-    headers = {"x-cap-api-key": key}
+    headers = {"x-cap-api-key": KEY}
     if not CST is None:
         headers["cst"] = CST
     if not SECURITY_TOKEN is None:
         headers["x-security-token"] = SECURITY_TOKEN
-    return identifierDict, headers
+    return CREDS_DICT, headers
 
 def prepareRequest(payload):
     requestData = {}
