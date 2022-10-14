@@ -17,7 +17,7 @@ import pathlib
 from _thread import *
 
 PORT = 6666
-HORIZON_SIZE = 100
+HORIZON_SIZE = 1000
 DEPTH = 1000
 INITIAL_OFFSET = 550
 TOTAL_DELTA = 0
@@ -104,16 +104,17 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
     def getCandleCol(candle, v_rising = False):
         col = "#FFFFFF"
 
-        if not v_rising:
-            if candle.green:
-                col = "#4F7942"
-            elif candle.red:
-                col = "#FA8072"
-        else:
-            if candle.green:
-                col = "#00FF7F"
-            elif candle.red:
-                col = "#DC143C"
+        # Volume based colors are working slightly wrong
+        #if not v_rising:
+        if candle.green:
+            col = "#4F7942"
+        elif candle.red:
+            col = "#FA8072"
+        #else:
+            #if candle.green:
+                #col = "#00FF7F"
+            #elif candle.red:
+                #col = "#DC143C"
 
         return hex_to_bgr(col)
 
