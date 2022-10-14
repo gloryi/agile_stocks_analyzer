@@ -30,6 +30,7 @@ BAD_ENTRIES = 0
 GLOBAL_IDX = 0
 SHOW_META = False
 BUDGET = []
+RRR = 3
 
 a_lock = allocate_lock()
 task_lock = allocate_lock()
@@ -255,9 +256,6 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
 
         return compressedSeq
 
-
-
-
     depth = len(candles) + 1
     PIXELS_PER_CANDLE = 5
 
@@ -275,38 +273,41 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
     w_separator = (W // (5))*3
     h_separator =(H//5)*2
 
-    if not budget_candles is None:
-        bSquare  = [(h_separator//5)*2+10,  0 + 10, h_separator-10, W-w_separator-300-10]
-        drawSquareInZone(img, bSquare, 0,0,1,1,(10,0,0))
+    firstSquare  = [10,  10, H-10, W-10]
+    drawSquareInZone(img, firstSquare, 0,0,1,1,(10,0,0))
 
-        secondSquare  = [0+10,  W-w_separator-300+10, h_separator-10, W-10]
-        drawSquareInZone(img, secondSquare, 0,0,1,1,(10,10,10))
+    #if not budget_candles is None:
+        #bSquare  = [(h_separator//5)*2+10,  0 + 10, h_separator-10, W-w_separator-300-10]
+        #drawSquareInZone(img, bSquare, 0,0,1,1,(10,0,0))
 
-    else:
-        secondSquare  = [0+10,  0+10, h_separator-10, W-10]
-        drawSquareInZone(img, secondSquare, 0,0,1,1,(10,10,10))
+        #secondSquare  = [0+10,  W-w_separator-300+10, h_separator-10, W-10]
+        #drawSquareInZone(img, secondSquare, 0,0,1,1,(10,10,10))
 
-    firstSquare  = [h_separator+10,  0+10, H-10, w_separator-10]
-    drawSquareInZone(img, firstSquare, 0,0,1,1,(20,20,20))
+    #else:
+        #secondSquare  = [0+10,  0+10, h_separator-10, W-10]
+        #drawSquareInZone(img, secondSquare, 0,0,1,1,(10,10,10))
+
+    #firstSquare  = [h_separator+10,  0+10, H-10, w_separator-10]
+    #drawSquareInZone(img, firstSquare, 0,0,1,1,(20,20,20))
 
 
 
-    thirdSquare  = [h_separator+10,  w_separator+10, H-10, W-10]
-    drawSquareInZone(img, thirdSquare, 0,0,1,1,(5,5,5))
+    #thirdSquare  = [h_separator+10,  w_separator+10, H-10, W-10]
+    #drawSquareInZone(img, thirdSquare, 0,0,1,1,(5,5,5))
 
-    full_candles  = compless_sequence(candles[:-2], compression_level = 16)
-    med_candles  = compless_sequence(candles[-540:], compression_level = 4)
-    last_candles = candles[-100:]
+    #full_candles  = compless_sequence(candles[:-2], compression_level = 16)
+    #med_candles  = compless_sequence(candles[-540:], compression_level = 4)
+    last_candles = candles[-200:]
 
     drawLineNet(img, 75, H, W)
 
     draw_tasks = []
-    draw_tasks.append([full_candles, thirdSquare])
-    draw_tasks.append([med_candles, secondSquare])
+    #draw_tasks.append([full_candles, thirdSquare])
+    #draw_tasks.append([med_candles, secondSquare])
     draw_tasks.append([last_candles, firstSquare])
 
-    if not budget_candles is None:
-        draw_tasks.append([budget_candles, bSquare])
+    #if not budget_candles is None:
+        #draw_tasks.append([budget_candles, bSquare])
 
     for d_task in draw_tasks:
 
@@ -432,9 +433,89 @@ def client_handler(conn):
         if len(signals_queue) < 500:
             signals_queue.append((node_asset, node_index))
 
-
-
 def soot_session(task):
+    global TOTAL_DELTA
+    global TOTAL_P
+    global TOTAL_M
+    global TOTAL_SEEN
+    global WIN_STREAK
+    global BUDGET
+    global GLOBAL_IDX
+    global SHOW_META
+    global BAD_DIRECTION
+    global BAD_ENTRIES
+
+    TOTAL_SEEN +=1
+
+    asset_name, asset_idx = task[0], task[1]
+
+    GLOBAL_IDX = asset_idx
+
+    filepath = resolve_path(asset_name)
+
+    O, C, H, L, V = extract_ochl(filepath)
+    O, C, H, L, V = select_target(O, C, H, L, V, asset_idx)
+
+    candles = wrap_candles(O, C, H, L, V)
+
+    entry = None
+    stop  = None
+    entry_setteled = False
+
+
+    horizon = 0
+    image_descriptor = f'{asset_name}'
+
+    active_mode = "ENTRY"
+
+    while not entry and not stop and not entry_setteled:
+        f_ind = horizon
+        last_ind = len(candles) - HORIZON_SIZE + horizon
+
+        img = generateOCHLPicture(candles[f_ind : last_ind])
+
+        w, h = img.shape[1], img.shape[0]
+
+        font                   = cv.FONT_HERSHEY_SIMPLEX
+        bottomLeftCornerOfText = (10,100)
+        nextTextPlacement = (10,200)
+
+        fontScale              = 3
+        fontColor     = (255,255,255)
+
+        thickness = 4
+        lineType  = 2
+
+        cv.putText(img,
+                   active_mode,
+                   bottomLeftCornerOfText,
+                   font,
+                   fontScale,
+                   fontColor,
+                   thickness,
+                   lineType)
+
+        screen_res = 1920, 1080
+        cv.namedWindow(image_descriptor, cv.WINDOW_NORMAL)
+        cv.resizeWindow(image_descriptor, 1920, 1080)
+        cv.imshow(image_descriptor, img)
+        c = cv.waitKey(0) % 256
+
+        if c == ord('e'):
+            active_mode = "ENTRY"
+
+        elif c == ord('s'):
+            active_mode = "STOP"
+
+        elif c == ord('r'):
+            entry_setteled = False
+        else:
+            continue
+
+        cv.destroyAllWindows()
+
+
+def soot_session_deprecated(task):
 
     global TOTAL_DELTA
     global TOTAL_P
@@ -474,6 +555,7 @@ def soot_session(task):
 
     candles[-HORIZON_SIZE].initial = True
 
+    # Best entry and exit highligts
     for first_candle in range(5):
         for last_candle in range(first_candle, HORIZON_SIZE - 1):
             last_ind1 = len(candles) - HORIZON_SIZE + first_candle
