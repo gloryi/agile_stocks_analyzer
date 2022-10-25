@@ -433,6 +433,39 @@ def client_handler(conn):
         if len(signals_queue) < 500:
             signals_queue.append((node_asset, node_index))
 
+
+def prepare_callback(cv_mat, image_descriptor, input_processor):
+
+    def mouse_event_callback(event, x, y, flags, params):
+        #global cached
+
+        if event == cv.EVENT_MBUTTONDOWN:
+            w, h = cv_mat.shape[1], cv_mat.shape[0]
+            input_processor.set_custom_coord("RAW", x, y)
+
+            #draw_lines(cv_mat, image_descriptor)
+
+    return mouse_event_callback
+
+class inputProcessor():
+    def __init__(self):
+        self.__entities_dict = defaultdict(list)
+        self._mode = "NONE"
+
+    def set_mode(self, new_mode):
+        self._mode = new_mode
+
+    def append_custom_coord(entity_descriptor, x, y):
+        self.__entities_dict[entity_descriptor].append((x,y))
+
+    def set_custom_coord(entity_descriptor, x, y):
+        print(f"Setting {entity_descriptor} of {x}:{y}")
+        self.__entities_dict[entity_descriptor] = [(x,y)]
+
+    def set_coord_of_mode(x, y):
+        self.__entities_dict[self._mode] = [(x,y)]
+
+
 def soot_session(task):
     global TOTAL_DELTA
     global TOTAL_P
@@ -467,6 +500,8 @@ def soot_session(task):
     image_descriptor = f'{asset_name}'
 
     active_mode = "ENTRY"
+    input_processor = inputProcessor()
+
 
     while not entry and not stop and not entry_setteled:
         f_ind = horizon
@@ -499,6 +534,10 @@ def soot_session(task):
         cv.namedWindow(image_descriptor, cv.WINDOW_NORMAL)
         cv.resizeWindow(image_descriptor, 1920, 1080)
         cv.imshow(image_descriptor, img)
+
+        mouse_callback = prepare_callback(img, image_descriptor)
+        cv.setMouseCallback(image_descriptor, mouse_callback, inputProcessor)
+
         c = cv.waitKey(0) % 256
 
         if c == ord('e'):
