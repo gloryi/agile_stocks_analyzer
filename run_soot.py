@@ -28,7 +28,7 @@ def launch_test(ASSET):
 
     print(f"Launching {ASSET} evaluator")
 
-    time.sleep(2)
+    time.sleep(0.5)
     evaluator = subprocess.Popen(["python3", os.path.join(project_path, EVALUATOR), ASSET])
 
     return evaluator

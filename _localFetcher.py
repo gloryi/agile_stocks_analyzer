@@ -53,22 +53,37 @@ def initialize_assets():
     for asset in assets_paths:
 
         asset_name = pathlib.Path(asset).stem
-        #print(f"*** Preparing {asset_name}")
-        o,c,h,l,v = extractOCHLV(asset)
-        random_idx = random.randint(0, len(o)//2)
-        assets_dictionary[asset_name] = {"O":o,
-                                         "C":c,
-                                         "H":h,
-                                         "L":l,
-                                         "V":v,
-                                         "trailing":random_idx}
+        assets_dictionary[asset_name] = {"cached": False,
+                                         "path": asset}
     return assets_dictionary
+
+def initialize_specified_asset(asset_name):
+
+    global assets_dictionary
+    asset_path = assets_dictionary[asset_name]["path"]
+    o,c,h,l,v = extractOCHLV(asset_path)
+    print(f"*** Preparing {asset_name}")
+    random_idx = random.randint(0, len(o)//2)
+    assets_dictionary[asset_name] = {"O":o,
+                                    "C":c,
+                                    "H":h,
+                                    "L":l,
+                                    "V":v,
+                                    "trailing":random_idx,
+                                    "cached": True}
+
+
+
+
 
 def initialize():
     initialize_assets()
 
 def prepare_requested_prices(asset_name):
     global assets_dictionary
+
+    if not assets_dictionary[asset_name]["cached"]:
+        initialize_specified_asset(asset_name)
 
     target_asset = assets_dictionary[asset_name]
     target_idx   =  target_asset["trailing"]

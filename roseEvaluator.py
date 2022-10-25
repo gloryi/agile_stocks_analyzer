@@ -3188,7 +3188,7 @@ if __name__ == '__main__':
     else:
         VALIDATION_MODE = False
         timeframe = 0
-        INTERVAL_M = 5
+        INTERVAL_M = 2
 
     SEED = random.randint(0,10**10)
 

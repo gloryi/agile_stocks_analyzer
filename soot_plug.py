@@ -14,6 +14,9 @@ import numpy as np
 import tqdm
 import pathlib
 
+from copy import deepcopy
+from collections import defaultdict
+
 from _thread import *
 
 PORT = 6666
@@ -69,7 +72,13 @@ class simpleCandle():
     def ochl(self):
         return self.o, self.c, self.h, self.l
 
-def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
+def generateOCHLPicture(candles,
+                        entry = None,
+                        stop = None,
+                        budget_candles = None,
+                        _H = None,
+                        _W = None):
+
     def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
         try:
             X = zone[0]
@@ -197,6 +206,16 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
             line_level = line_counter * lines_step
             cv.line(img,(0, line_level),(W, line_level),(150,150,150),2)
 
+    def drawSLTP(img, H, W, entry = None, stop = None):
+        if entry:
+            line_level = H * entry
+            cv.line(img,(0, line_level),(W, line_level),(150,255,150),2)
+        if stop:
+            line_level = H * stop
+            cv.line(img,(0, line_level),(W, line_level),(150,150,255),4)
+
+
+
 
     def compless_sequence(candles, compression_level = 2):
         first_idx = 0
@@ -300,6 +319,7 @@ def generateOCHLPicture(candles, budget_candles = None, _H = None, _W = None):
     last_candles = candles[-200:]
 
     drawLineNet(img, 75, H, W)
+    drawSLTP(img, H, W, entry, stop)
 
     draw_tasks = []
     #draw_tasks.append([full_candles, thirdSquare])
@@ -433,15 +453,26 @@ def client_handler(conn):
         if len(signals_queue) < 500:
             signals_queue.append((node_asset, node_index))
 
+#====================================================>
+#=========== GRAPHICAL INPUT HANDLER
+#====================================================>
+
+
 
 def prepare_callback(cv_mat, image_descriptor, input_processor):
 
     def mouse_event_callback(event, x, y, flags, params):
-        #global cached
 
-        if event == cv.EVENT_MBUTTONDOWN:
-            w, h = cv_mat.shape[1], cv_mat.shape[0]
+        if event == cv.EVENT_LBUTTONDOWN:
+
+            mat_copy = deepcopy(cv_mat)
+            w, h = mat_copy.shape[1], mat_copy.shape[0]
             input_processor.set_custom_coord("RAW", x, y)
+
+            cv.line(mat_copy,(0,y+1), (w,y+1), (0,255,255), 2)
+            cv.line(mat_copy,(0,y-1), (w,y-1), (0,255,255), 2)
+            cv.line(mat_copy,(0,y), (w,y), (255,255,255), 4)
+            cv.imshow(image_descriptor, mat_copy)
 
             #draw_lines(cv_mat, image_descriptor)
 
@@ -455,15 +486,18 @@ class inputProcessor():
     def set_mode(self, new_mode):
         self._mode = new_mode
 
-    def append_custom_coord(entity_descriptor, x, y):
+    def append_custom_coord(self, entity_descriptor, x, y):
         self.__entities_dict[entity_descriptor].append((x,y))
 
-    def set_custom_coord(entity_descriptor, x, y):
+    def set_custom_coord(self, entity_descriptor, x, y):
         print(f"Setting {entity_descriptor} of {x}:{y}")
         self.__entities_dict[entity_descriptor] = [(x,y)]
 
-    def set_coord_of_mode(x, y):
+    def set_coord_of_mode(self, x, y):
         self.__entities_dict[self._mode] = [(x,y)]
+
+    def __getitem__(self, key):
+        return self.__entities_dict[key]
 
 
 def soot_session(task):
@@ -507,7 +541,7 @@ def soot_session(task):
         f_ind = horizon
         last_ind = len(candles) - HORIZON_SIZE + horizon
 
-        img = generateOCHLPicture(candles[f_ind : last_ind])
+        img = generateOCHLPicture(candles[f_ind : last_ind], entry, stop)
 
         w, h = img.shape[1], img.shape[0]
 
@@ -535,10 +569,20 @@ def soot_session(task):
         cv.resizeWindow(image_descriptor, 1920, 1080)
         cv.imshow(image_descriptor, img)
 
-        mouse_callback = prepare_callback(img, image_descriptor)
-        cv.setMouseCallback(image_descriptor, mouse_callback, inputProcessor)
+        mouse_callback = prepare_callback(img, image_descriptor, input_processor)
+        cv.setMouseCallback(image_descriptor, mouse_callback)
 
         c = cv.waitKey(0) % 256
+
+        # TODO debug this particular line for errors
+        if "RAW" in input_processor:
+            horisontal_value = input_processor["RAW"][0]
+            scaled_value = horisontal_value / w
+            if active_mode == "ENTRY":
+                entry = scaled_value
+            elif active_mode == "STOP":
+                stop = scaled_value
+
 
         if c == ord('e'):
             active_mode = "ENTRY"
