@@ -14,7 +14,7 @@ timeframe = 30
 #timeframe = 1
 #timeframe = 4
 
-CONFIG_DIECTORY = os.path.join(os.getcwd(), "API_CONFIG)
+CONFIG_DIECTORY = os.path.join(os.getcwd(), "API_CONFIG")
 
 CST = None
 SECURITY_TOKEN = None

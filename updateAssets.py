@@ -10,7 +10,7 @@ SECURITY_TOKEN = None
 
 def getCreds():
     key = KEY
-    identifierDict = {"identifier" : CREDS_DICT["identifier"]
+    identifierDict = {"identifier" : CREDS_DICT["identifier"],
                         "password" : CREDS_DICT["password"],
                         "encryptedPassword": "false"}
     headers = {"x-cap-api-key": key}
