@@ -18,6 +18,6 @@ Example of signals, sent to telegram bot by system.
 Example of trading simulation. Based on instant signals from random random positions of prices dataset.
 ![image](https://user-images.githubusercontent.com/32369259/202700064-7aa7115c-7203-4cde-af2c-fd7a16d1776b.png)
 
-Example of system validation on large scale dataset.
-![USDCHF15](https://user-images.githubusercontent.com/32369259/202700218-48918aca-d7bb-43f2-baa5-0899e1571b9c.jpg)
+Example of system validation on large scale dataset (after filtering of signals applied same as for telegram bot).
+![PRE_ORCHID_D1000_TR0](https://user-images.githubusercontent.com/32369259/202701759-bbb318dc-9097-4654-a0de-0f23c5ac569f.jpg)
 
