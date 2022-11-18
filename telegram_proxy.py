@@ -5,7 +5,7 @@ import threading
 import telegram
 import sys
 import socket
-from telegram_api_config import *
+from telegram_api_config import ALLOW_NEW_USERS, TOKEN
 
 from _thread import *
 

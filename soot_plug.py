@@ -20,7 +20,7 @@ from collections import defaultdict
 from _thread import *
 
 PORT = 6666
-HORIZON_SIZE = 1000
+HORIZON_SIZE = 100
 DEPTH = 1000
 INITIAL_OFFSET = 550
 TOTAL_DELTA = 0
@@ -32,8 +32,8 @@ BAD_DIRECTION = 0
 BAD_ENTRIES = 0
 GLOBAL_IDX = 0
 SHOW_META = False
-BUDGET = []
 RRR = 3
+BUDGET = 100
 
 a_lock = allocate_lock()
 task_lock = allocate_lock()
@@ -72,9 +72,20 @@ class simpleCandle():
     def ochl(self):
         return self.o, self.c, self.h, self.l
 
+def minMaxOfZone(candleSeq):
+    minP = min(candleSeq, key = lambda _ : _.l).l
+    maxP = max(candleSeq, key = lambda _ : _.h).h
+    print("minP", minP)
+    print("maxP", maxP)
+    return minP, maxP
+
 def generateOCHLPicture(candles,
                         entry = None,
                         stop = None,
+                        profit = None,
+                        entry_activated = False,
+                        stop_activated = False,
+                        profit_activated = False,
                         budget_candles = None,
                         _H = None,
                         _W = None):
@@ -117,14 +128,14 @@ def generateOCHLPicture(candles,
         # Volume based colors are working slightly wrong
         #if not v_rising:
         if candle.green:
-            col = "#4F7942"
+            col = "#5F7942"
         elif candle.red:
-            col = "#FA8072"
+            col = "#FA7072"
         #else:
             #if candle.green:
-                #col = "#00FF7F"
+                #col = "#0FFF0F"
             #elif candle.red:
-                #col = "#DC143C"
+                #col = "#FC143C"
 
         return hex_to_bgr(col)
 
@@ -165,29 +176,14 @@ def generateOCHLPicture(candles,
         if candle.initial:
             drawLineInZone(img, zone, 1,(i+0.5)/depth,0,(i+0.5)/depth,col,thickness=3)
 
-
-
-
-
-    def minMaxOfZone(candleSeq):
-        minP = min(candleSeq, key = lambda _ : _.l).l
-        maxP = max(candleSeq, key = lambda _ : _.h).h
-        print("minP", minP)
-        print("maxP", maxP)
-        return minP, maxP
-
     def drawCandles(img, candles, zone, minV, maxV, p1, p2):
 
         oline = fitTozone(candles[-1].o, minV, maxV)
         cline = fitTozone(candles[-1].c, minV, maxV)
-        #lline = fitTozone(candles[-1].l, minV, maxV)
-        #hline = fitTozone(candles[-1].h, minV, maxV)
 
-        drawLineInZone(img, zone, 1-oline,0,1-oline,1,(200,0,200), thickness = 5)
-        drawLineInZone(img, zone, 1-cline,0,1-cline,1,(0,200,200), thickness = 5)
+        drawLineInZone(img, zone, 1-oline,0,1-oline,1,(200,0,200), thickness = 4)
+        drawLineInZone(img, zone, 1-cline,0,1-cline,1,(0,200,200), thickness = 4)
 
-        #drawLineInZone(img, zone, 1-lline,0,1-lline,1,(175,0,175), thickness = 2)
-        #drawLineInZone(img, zone, 1-hline,0,1-hline,1,(175,0,175), thickness = 2)
 
         prev_v = candles[0].v
 
@@ -204,15 +200,30 @@ def generateOCHLPicture(candles,
 
         for line_counter in range(0, line_interval, 3):
             line_level = line_counter * lines_step
-            cv.line(img,(0, line_level),(W, line_level),(150,150,150),2)
+            cv.line(img,(0, line_level),(W, line_level),(150,150,150),4)
 
-    def drawSLTP(img, H, W, entry = None, stop = None):
+    def drawSLTP(img, H, W, minV, maxV, zone,
+                 entry = None, stop = None, profit = None,
+                 entry_activated = False, stop_activated = False, profit_activated = False):
         if entry:
-            line_level = H * entry
-            cv.line(img,(0, line_level),(W, line_level),(150,255,150),2)
+            line_level = fitTozone(entry, minV, maxV)
+            if not entry_activated:
+                drawLineInZone(img, zone, 1-line_level,0,1-line_level,1,(150,255,150), thickness = 8)
+            else:
+                drawLineInZone(img, zone, 1-line_level,0,1-line_level,1,(150,255,150), thickness = 24)
         if stop:
-            line_level = H * stop
-            cv.line(img,(0, line_level),(W, line_level),(150,150,255),4)
+            line_level = fitTozone(stop, minV, maxV)
+            if not stop_activated:
+                drawLineInZone(img, zone, 1-line_level,0,1-line_level,1,(150,150,255), thickness = 8)
+            else:
+                drawLineInZone(img, zone, 1-line_level,0,1-line_level,1,(150,150,255), thickness = 24)
+        if profit:
+            line_level = fitTozone(profit, minV, maxV)
+            if not profit_activated:
+                drawLineInZone(img, zone, 1-line_level,0,1-line_level,1,(255,150,255), thickness = 8)
+            else:
+                drawLineInZone(img, zone, 1-line_level,0,1-line_level,1,(255,150,255), thickness = 24)
+
 
 
 
@@ -276,7 +287,7 @@ def generateOCHLPicture(candles,
         return compressedSeq
 
     depth = len(candles) + 1
-    PIXELS_PER_CANDLE = 5
+    PIXELS_PER_CANDLE = 10
 
     W = PIXELS_PER_CANDLE * depth
     H = (W//(16)*9)
@@ -316,10 +327,11 @@ def generateOCHLPicture(candles,
 
     #full_candles  = compless_sequence(candles[:-2], compression_level = 16)
     #med_candles  = compless_sequence(candles[-540:], compression_level = 4)
-    last_candles = candles[-200:]
+    last_candles = candles[-400:]
 
-    drawLineNet(img, 75, H, W)
-    drawSLTP(img, H, W, entry, stop)
+    #drawLineNet(img, 75, H, W)
+    minV, maxV = minMaxOfZone(last_candles)
+    drawSLTP(img, H, W, minV, maxV, firstSquare, entry, stop, profit, entry_activated, stop_activated, profit_activated)
 
     draw_tasks = []
     #draw_tasks.append([full_candles, thirdSquare])
@@ -467,11 +479,10 @@ def prepare_callback(cv_mat, image_descriptor, input_processor):
 
             mat_copy = deepcopy(cv_mat)
             w, h = mat_copy.shape[1], mat_copy.shape[0]
-            input_processor.set_custom_coord("RAW", x, y)
+            input_processor.append_raw((x, y))
 
-            cv.line(mat_copy,(0,y+1), (w,y+1), (0,255,255), 2)
-            cv.line(mat_copy,(0,y-1), (w,y-1), (0,255,255), 2)
-            cv.line(mat_copy,(0,y), (w,y), (255,255,255), 4)
+
+            cv.line(mat_copy,(0,y), (w,y), (255,255,255), 6)
             cv.imshow(image_descriptor, mat_copy)
 
             #draw_lines(cv_mat, image_descriptor)
@@ -482,6 +493,7 @@ class inputProcessor():
     def __init__(self):
         self.__entities_dict = defaultdict(list)
         self._mode = "NONE"
+        self._raw_points = []
 
     def set_mode(self, new_mode):
         self._mode = new_mode
@@ -496,9 +508,26 @@ class inputProcessor():
     def set_coord_of_mode(self, x, y):
         self.__entities_dict[self._mode] = [(x,y)]
 
+    def append_raw(self, new_coords):
+        self._raw_points.append(new_coords)
+
+    def is_new_raw_coord(self):
+        return len(self._raw_points) != 0
+
+    def pop_raw(self):
+        return self._raw_points.pop()
+
+    def extract_only_last(self):
+        extracted = self.pop_raw()
+        self._raw_points = []
+        return extracted
+
     def __getitem__(self, key):
         return self.__entities_dict[key]
 
+#====================================================>
+#=========== SIMULATION LOOP
+#====================================================>
 
 def soot_session(task):
     global TOTAL_DELTA
@@ -522,13 +551,12 @@ def soot_session(task):
 
     O, C, H, L, V = extract_ochl(filepath)
     O, C, H, L, V = select_target(O, C, H, L, V, asset_idx)
-
     candles = wrap_candles(O, C, H, L, V)
 
     entry = None
     stop  = None
+    profit = None
     entry_setteled = False
-
 
     horizon = 0
     image_descriptor = f'{asset_name}'
@@ -536,33 +564,31 @@ def soot_session(task):
     active_mode = "ENTRY"
     input_processor = inputProcessor()
 
+    f_ind = horizon
+    last_ind = len(candles) - HORIZON_SIZE + horizon
+    min_price, max_price = minMaxOfZone(candles[last_ind - 400 : last_ind]) 
 
-    while not entry and not stop and not entry_setteled:
+    while not entry or not stop or not entry_setteled:
         f_ind = horizon
         last_ind = len(candles) - HORIZON_SIZE + horizon
 
-        img = generateOCHLPicture(candles[f_ind : last_ind], entry, stop)
+        img = generateOCHLPicture(candles[f_ind : last_ind], entry, stop, profit)
 
         w, h = img.shape[1], img.shape[0]
 
         font                   = cv.FONT_HERSHEY_SIMPLEX
-        bottomLeftCornerOfText = (10,100)
-        nextTextPlacement = (10,200)
+        bottomLeftCornerOfText = (20,150)
+        nextTextPlacement      = (30,250)
 
-        fontScale              = 3
-        fontColor     = (255,255,255)
+        fontScale              = 6
+        fontColor              = (255,255,255)
 
-        thickness = 4
-        lineType  = 2
+        thickness              = 5
+        lineType               = 2
 
-        cv.putText(img,
-                   active_mode,
-                   bottomLeftCornerOfText,
-                   font,
-                   fontScale,
-                   fontColor,
-                   thickness,
-                   lineType)
+        cv.putText(img, active_mode+f" {WIN_STREAK} rr | {BUDGET}$",
+                   bottomLeftCornerOfText, font, fontScale,
+                   fontColor, thickness, lineType)
 
         screen_res = 1920, 1080
         cv.namedWindow(image_descriptor, cv.WINDOW_NORMAL)
@@ -574,15 +600,19 @@ def soot_session(task):
 
         c = cv.waitKey(0) % 256
 
-        # TODO debug this particular line for errors
-        if "RAW" in input_processor:
-            horisontal_value = input_processor["RAW"][0]
-            scaled_value = horisontal_value / w
+        if input_processor.is_new_raw_coord():
+            horisontal_value = input_processor.extract_only_last()[1]
+            scaled_value = min_price +  (1 - (horisontal_value / h)) * (max_price - min_price)
+
             if active_mode == "ENTRY":
                 entry = scaled_value
             elif active_mode == "STOP":
                 stop = scaled_value
 
+            if entry and stop:
+                risk   = entry - stop
+                reward = risk * 3
+                profit = entry + reward
 
         if c == ord('e'):
             active_mode = "ENTRY"
@@ -591,213 +621,124 @@ def soot_session(task):
             active_mode = "STOP"
 
         elif c == ord('r'):
+            entry = None
+            stop = None
+            profit = None
             entry_setteled = False
+            
+        elif c == ord('w') and entry and stop:
+            entry_setteled = True
         else:
             continue
 
         cv.destroyAllWindows()
 
+    horizon_step = 1
+    horizon_size = HORIZON_SIZE
 
-def soot_session_deprecated(task):
+    activate_entry_above  = entry < candles[last_ind - 1].c
+    activate_stop_above   = entry > stop 
+    activate_profit_above = entry > profit 
 
-    global TOTAL_DELTA
-    global TOTAL_P
-    global TOTAL_M
-    global TOTAL_SEEN
-    global WIN_STREAK
-    global BUDGET
-    global GLOBAL_IDX
-    global SHOW_META
-    global BAD_DIRECTION
-    global BAD_ENTRIES
+    entry_activated  = False
+    stop_activated   = False
+    profit_activated = False
 
-    TOTAL_SEEN +=1
-
-    asset_name, asset_idx = task[0], task[1]
-
-    GLOBAL_IDX = asset_idx
-
-    filepath = resolve_path(asset_name)
-
-    O, C, H, L, V = extract_ochl(filepath)
-    O, C, H, L, V = select_target(O, C, H, L, V, asset_idx)
-
-    candles = wrap_candles(O, C, H, L, V)
-    budget_candles = lineup_candles(BUDGET)
-
-    if len(budget_candles) < 1:
-        budget_candles = None
-
-    longLevel = None
-    shortLevel = None
-    closeLevel = None
-    delta = None
-    best_delta = 0
-    best_entry, best_exit = 0, 0
-    closedByHand = False
-
-    candles[-HORIZON_SIZE].initial = True
-
-    # Best entry and exit highligts
-    for first_candle in range(5):
-        for last_candle in range(first_candle, HORIZON_SIZE - 1):
-            last_ind1 = len(candles) - HORIZON_SIZE + first_candle
-            last_ind2 = len(candles) - HORIZON_SIZE + last_candle
-
-            if last_ind1 == last_ind2:
-                continue
-
-            c1 = candles[last_ind1]
-            c2 = candles[last_ind2]
-
-            if abs(c1.c - c2.c) > best_delta:
-                best_delta = abs(c1.c - c2.c)
-                best_entry = last_ind1
-                best_exit = last_ind2
-
-    candles[best_entry].best_entry = True
-    candles[best_exit].best_exit = True
-
-    best_entry_level = candles[best_entry].c
-    best_exit_level = candles[best_exit].c
-    best_delta = abs(int(((best_exit_level - best_entry_level)/best_entry_level)*10000))
-
-    HORIZON_STEP = 10
-
-
-    for horizon in range(0, HORIZON_SIZE, HORIZON_STEP):
-
-        if horizon > HORIZON_SIZE*0.8:
-            SHOW_META = True
+    for horizon in range(1, horizon_size, horizon_step):
 
         f_ind = horizon
-        last_ind = len(candles) - HORIZON_SIZE + horizon
-        image_descriptor = f'{asset_name} || {horizon}/{HORIZON_SIZE}'
+        last_ind = len(candles) - horizon_size + horizon
+        image_descriptor = f'{asset_name} || {horizon}/{horizon_size}'
 
-        lastCandleLevel = candles[last_ind-1].c
+        lastcandlelevel = candles[last_ind-1].c
+    
+        min_price, max_price = minMaxOfZone(candles[f_ind : last_ind]) 
 
-        if not longLevel is None:
-            if closeLevel is None:
-                delta = int(((lastCandleLevel - longLevel)/longLevel)*10000)
-            else:
-                delta = int(((closeLevel - longLevel)/longLevel)*10000)
 
-        if not shortLevel is None:
-            if closeLevel is None:
-                delta = int(((shortLevel - lastCandleLevel)/shortLevel)*10000)
-            else:
-                delta = int(((shortLevel - closeLevel)/shortLevel)*10000)
+        # TODO - ADD SEPARATE METHODS
+        if activate_entry_above:
+            if candles[last_ind-1].l < entry:
+                entry_activated = True
+        else:
+            if candles[last_ind-1].h > entry:
+                entry_activated = True
 
-        img = generateOCHLPicture(candles[f_ind : last_ind], budget_candles = budget_candles)
+        if entry_activated and activate_stop_above and not profit_activated and not stop_activated:
+            if candles[last_ind-1].l < stop :
+                stop_activated = True
+                WIN_STREAK -= 1
+                BUDGET -= BUDGET * 0.05
+        elif entry_activated and not activate_stop_above and not profit_activated and not stop_activated:
+            if  candles[last_ind-1].h > stop:
+                stop_activated = True
+                WIN_STREAK -= 1
+                BUDGET -= BUDGET * 0.05
+
+        if entry_activated and activate_profit_above and not stop_activated and not profit_activated:
+            if candles[last_ind-1].l < profit :
+                profit_activated = True
+                WIN_STREAK += 3
+                BUDGET += BUDGET * 0.05 * 3
+        elif entry_activated and not activate_profit_above and not stop_activated and not profit_activated:
+            if  candles[last_ind-1].h > profit:
+                profit_activated = True
+                WIN_STREAK += 3
+                BUDGET += BUDGET * 0.05 * 3
+
+
+        img = generateOCHLPicture(candles[f_ind : last_ind],
+                                  entry,
+                                  stop,
+                                  profit,
+                                  entry_activated,
+                                  stop_activated,
+                                  profit_activated)
 
         w, h = img.shape[1], img.shape[0]
 
         screen_res = 1920, 1080
 
-        session_perfomance = f"[{TOTAL_SEEN}] {horizon}:{HORIZON_SIZE-1} "
-        WR = int((TOTAL_P / (TOTAL_M+TOTAL_P))*100) if (TOTAL_M+TOTAL_P)>0 else 0
-        session_perfomance += f"{delta}>>{TOTAL_DELTA}"
-        session_ex = f"<{WIN_STREAK}> {TOTAL_M}/{TOTAL_P} {WR}%"
+        # TODO PLACE SOMEWHERE ELSE
+        session_perfomance = f"{horizon}:{horizon_size-1} "
+        wr = 0
+        session_ex = f"{WIN_STREAK}rr | {BUDGET}$"
 
-        if SHOW_META:
-            session_ex += f" <<{best_delta} "
-            if not delta is None:
-                session_ex += f" {int(100*(delta/best_delta))}%>>"
 
         font                   = cv.FONT_HERSHEY_SIMPLEX
-        bottomLeftCornerOfText = (10,100)
-        nextTextPlacement = (10,200)
+        bottomLeftCornerOfText = (20,150)
+        nextTextPlacement      = (30,250)
 
-        fontScale              = 3
-        if not delta is None:
-            if delta > 0:
-                fontColor = (0,255,0)
-            else:
-                fontColor = (0,0,255)
-        else:
-            fontColor     = (255,255,255)
+        fontScale              = 6
+        fontColor              = (255,255,255)
 
-        thickness = 4
-        lineType  = 2
+        thickness              = 5
+        lineType               = 2
 
-        cv.putText(img,
-                   session_perfomance,
+        cv.putText(img, session_perfomance,
                    bottomLeftCornerOfText,
-                   font,
-                   fontScale,
-                   fontColor,
-                   thickness,
-                   lineType)
+                   font, fontScale,
+                   fontColor, thickness, lineType)
 
-        cv.putText(img,
-                   session_ex,
-                   nextTextPlacement,
-                   font,
-                   fontScale,
-                   fontColor,
-                   thickness,
-                   lineType)
+        cv.putText(img, session_ex,
+                   nextTextPlacement, font,
+                   fontScale, fontColor,
+                   thickness, lineType)
 
         cv.namedWindow(image_descriptor, cv.WINDOW_NORMAL)
         cv.resizeWindow(image_descriptor, 1920, 1080)
-
         cv.imshow(image_descriptor, img)
 
 
         c = cv.waitKey(0) % 256
-
-        if c == ord('l'):
-            if delta is None and horizon <= HORIZON_SIZE * 0.5:
-                candles[last_ind-1].long_entry = True
-                candles[last_ind-1].entry_level = lastCandleLevel
-                longLevel = lastCandleLevel
-
-        elif c == ord('s'):
-            if delta is None and horizon <= HORIZON_SIZE * 0.5:
-                candles[last_ind-1].short_entry = True
-                candles[last_ind-1].entry_level = lastCandleLevel
-                shortLevel = lastCandleLevel
-
-        elif c == ord('c'):
-            if not delta is None:
-                closeLevel = lastCandleLevel
-                candles[last_ind-1].exit = True
-                candles[last_ind-1].exit_level = lastCandleLevel
-
+        
+        if c == ord('f'):
+            break
 
         cv.destroyAllWindows()
 
-    if not delta is None:
-
-        TOTAL_DELTA += delta
-        BUDGET.append(TOTAL_DELTA)
-
-        if delta > 0:
-            WIN_STREAK = 0 if WIN_STREAK < 0 else WIN_STREAK + 1
-            TOTAL_P += 1
-
-        elif delta < 0:
-            WIN_STREAK = 0 if WIN_STREAK > 0 else WIN_STREAK - 1
-            TOTAL_M += 1
-
-        if best_entry_level < best_exit_level and longLevel:
-            if delta < 0:
-                BAD_ENTRIES +=1
-        elif best_entry_level < best_exit_level and shortLevel:
-            if delta < 0:
-                BAD_DIRECTION +=1
-
-
-        if best_entry_level > best_exit_level and shortLevel:
-            if delta < 0:
-                BAD_ENTRIES +=1
-        elif best_entry_level > best_exit_level and longLevel:
-            if delta < 0:
-                BAD_DIRECTION +=1
-
-
-    SHOW_META = False
-
+#====================================================>
+#=========== NETWORKING
+#====================================================>
 
 def accept_connections(ServerSocket):
     while True:

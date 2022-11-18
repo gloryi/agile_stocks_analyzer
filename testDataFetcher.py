@@ -6,6 +6,7 @@ import socket
 import sys
 import json
 import time
+from api_keys import CREDS_DICT, KEY
 
 
 PORT = 7777
@@ -29,9 +30,9 @@ CST = None
 SECURITY_TOKEN = None
 
 def getCreds():
-    key = "RGh2krgUm0dVMfGc"
-    identifierDict = {"identifier" : "thelastmelancholy@gmail.com",
-                        "password" : "2s1e0r6k9o77QWER",
+    key = KEY
+    identifierDict = {"identifier" : CREDS_DICT["identifier"],
+                        "password" : CREDS_DICT["password"],
                         "encryptedPassword": "false"}
     headers = {"x-cap-api-key": key}
     if not CST is None:
