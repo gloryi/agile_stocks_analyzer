@@ -1,0 +1,5 @@
+*.png
+*.jpg
+__pycache__
+api_keys.py
+telegram_api_config.py
