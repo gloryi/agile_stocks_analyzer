@@ -10,7 +10,8 @@ LOCAL_FOLDER = os.path.join(os.getcwd(), "various_datasets")
 LONG = 1
 SHORT = 0
 
-def list_assets(folder = LOCAL_FOLDER):
+
+def list_assets(folder=LOCAL_FOLDER):
     assets = []
 
     for _r, _d, _f in os.walk(folder):
@@ -28,13 +29,14 @@ def extractOCHLV(filepath):
         reader = csv.reader(ochlfile)
 
         for line in reader:
-            O.append(float(line[0])*100)
-            C.append(float(line[1])*100)
-            H.append(float(line[2])*100)
-            L.append(float(line[3])*100)
+            O.append(float(line[0]) * 100)
+            C.append(float(line[1]) * 100)
+            H.append(float(line[2]) * 100)
+            L.append(float(line[3]) * 100)
             V.append(float(line[4]))
 
-    return O,C,H,L,V
+    return O, C, H, L, V
+
 
 def extract_prices():
 
@@ -42,13 +44,9 @@ def extract_prices():
 
     for asset in assets_paths:
 
-        #asset_name = pathlib.Path(asset).stem
-        o,c,h,l,v = extractOCHLV(asset)
-        asset_dictionary = {"O":o,
-                                "C":c,
-                                "H":h,
-                                "L":l,
-                                "V":v}
+        # asset_name = pathlib.Path(asset).stem
+        o, c, h, l, v = extractOCHLV(asset)
+        asset_dictionary = {"O": o, "C": c, "H": h, "L": l, "V": v}
         yield asset_dictionary
 
 
@@ -83,60 +81,66 @@ def best_direction(c_prices):
 
     return direction
 
+
 def is_pullback(c_prices):
 
-    i = len(c_prices)-1
+    i = len(c_prices) - 1
 
-    if c_prices[i] < c_prices[i-1]:
-        if c_prices[i-1] > c_prices[i-4]:
-            if c_prices[i-2] > c_prices[i-5]:
+    if c_prices[i] < c_prices[i - 1]:
+        if c_prices[i - 1] > c_prices[i - 4]:
+            if c_prices[i - 2] > c_prices[i - 5]:
                 return True
 
-    if c_prices[i] > c_prices[i-1]:
-        if c_prices[i-1] < c_prices[i-4]:
-            if c_prices[i-2] < c_prices[i-5]:
+    if c_prices[i] > c_prices[i - 1]:
+        if c_prices[i - 1] < c_prices[i - 4]:
+            if c_prices[i - 2] < c_prices[i - 5]:
                 return True
 
     return False
 
+
 def normalize_last_candles(o_prices, c_prices):
     bodies = []
     for i in range(len(o_prices)):
-        _o , _c = o_prices[i], c_prices[i]
-        bodies.append(abs(_o-_c))
-    return sum(bodies)/len(bodies)
+        _o, _c = o_prices[i], c_prices[i]
+        bodies.append(abs(_o - _c))
+    return sum(bodies) / len(bodies)
+
 
 def normalize_candles(o_prices, c_prices, n_body):
     bodies = []
     for i in range(len(o_prices)):
-        _o , _c = o_prices[i], c_prices[i]
-        bodies.append((_o-_c) / n_body)
+        _o, _c = o_prices[i], c_prices[i]
+        bodies.append((_o - _c) / n_body)
     return bodies
+
 
 def normalize_deltas(o_prices, c_prices, n_body):
     bodies = []
     for i in range(len(o_prices)):
-        _o , _c = o_prices[i], c_prices[i]
+        _o, _c = o_prices[i], c_prices[i]
 
     bodies_deltas = []
-    for i in range(len(bodies)-1):
-        delta = bodies[i+1]-bodies[i]
-        bodies_deltas.append(delta/n_body)
+    for i in range(len(bodies) - 1):
+        delta = bodies[i + 1] - bodies[i]
+        bodies_deltas.append(delta / n_body)
 
     return bodies_deltas
+
 
 def normalize_wicks(o_prices, c_prices, h_prices, l_prices, n_body):
 
     wicks = []
 
     for i in range(len(o_prices)):
-        _o , _c = o_prices[i], c_prices[i]
+        _o, _c = o_prices[i], c_prices[i]
         _h, _l = h_prices[i], l_prices[i]
-        h_wick, l_wick = _h - max(_o, _c), min(_o,_c) - _l
+        h_wick, l_wick = _h - max(_o, _c), min(_o, _c) - _l
         wicks.append((h_wick) / n_body)
         wicks.append((l_wick) / n_body)
 
     return wicks
+
 
 def normalize_volume(v_values):
 
@@ -148,11 +152,12 @@ def normalize_volume(v_values):
 
     return normalized_vol
 
+
 def find_closest_levels(c_values, target_close, normal_body):
 
-    arrClose  = np.asarray(c_values)
+    arrClose = np.asarray(c_values)
 
-    highPeaks, _ = find_peaks(arrClose, distance = 50)
+    highPeaks, _ = find_peaks(arrClose, distance=50)
     highPeaks = arrClose[highPeaks]
 
     minmax = np.asarray([arrClose.max(), arrClose.min()])
@@ -164,13 +169,17 @@ def find_closest_levels(c_values, target_close, normal_body):
 
     closest_peak = peaks[closest_peak]
 
-    return [(target_close - closest_peak)/normal_body]
+    return [(target_close - closest_peak) / normal_body]
+
 
 def normalize_min_max(c_values, target_close, normal_body):
     max_val = max(c_values)
     min_val = min(c_values)
 
-    return (max_val-target_close)/normal_body, (target_close-min_val)/normal_body
+    return (max_val - target_close) / normal_body, (
+        target_close - min_val
+    ) / normal_body
+
 
 def extract_label(ochlv, i1, i2, v1, v2, v3):
     direction = best_direction(ochlv["C"][v1:v3])
@@ -179,66 +188,65 @@ def extract_label(ochlv, i1, i2, v1, v2, v3):
 
 def extract_features(ochlv, i1, i2, v1, v2):
 
-        pullback = is_pullback(ochlv["C"][v1:v2])
+    pullback = is_pullback(ochlv["C"][v1:v2])
 
-        if not pullback:
-            return []
+    if not pullback:
+        return []
 
-        normalized_body = normalize_last_candles(ochlv["O"][v1:v2],
-                                                     ochlv["C"][v1:v2])
+    normalized_body = normalize_last_candles(ochlv["O"][v1:v2], ochlv["C"][v1:v2])
 
-        if normalized_body == 0:
-            return []
+    if normalized_body == 0:
+        return []
 
-        normalized_last = normalize_candles(ochlv["O"][v1:v2],
-                                            ochlv["C"][v1:v2],
-                                            normalized_body)
+    normalized_last = normalize_candles(
+        ochlv["O"][v1:v2], ochlv["C"][v1:v2], normalized_body
+    )
 
-        normalized_deltas = normalize_deltas(ochlv["O"][v1:v2],
-                                            ochlv["C"][v1:v2],
-                                            normalized_body)
+    normalized_deltas = normalize_deltas(
+        ochlv["O"][v1:v2], ochlv["C"][v1:v2], normalized_body
+    )
 
-        normalized_wicks = normalize_wicks(ochlv["O"][v1:v2],
-                                            ochlv["C"][v1:v2],
-                                            ochlv["H"][v1:v2],
-                                            ochlv["L"][v1:v2],
-                                            normalized_body)
+    normalized_wicks = normalize_wicks(
+        ochlv["O"][v1:v2],
+        ochlv["C"][v1:v2],
+        ochlv["H"][v1:v2],
+        ochlv["L"][v1:v2],
+        normalized_body,
+    )
 
-        normal_vol = normalize_volume(ochlv["V"][v1:v2])
+    normal_vol = normalize_volume(ochlv["V"][v1:v2])
 
-        closest_peaks = find_closest_levels(ochlv["C"][i1:i2],
-                                            ochlv["C"][v2],
-                                            normalized_body)
+    closest_peaks = find_closest_levels(
+        ochlv["C"][i1:i2], ochlv["C"][v2], normalized_body
+    )
 
-        min_val, max_val = normalize_min_max(ochlv["C"][i1:i2],
-                                                ochlv["C"][v2],
-                                                normalized_body)
+    min_val, max_val = normalize_min_max(
+        ochlv["C"][i1:i2], ochlv["C"][v2], normalized_body
+    )
 
+    features = []
+    features += normalized_last
+    features += normalized_deltas
+    features += normalized_wicks
+    features += normal_vol
+    features += closest_peaks
+    features += [min_val, max_val]
 
-
-        features = []
-        features += normalized_last
-        features += normalized_deltas
-        features += normalized_wicks
-        features += normal_vol
-        features += closest_peaks
-        features += [min_val, max_val]
-
-        return features
+    return features
 
 
 def process_assets():
     for ochlv in extract_prices():
         n_samples = len(ochlv["O"])
 
-        for index in range(n_samples//2, n_samples-1000-10):
+        for index in range(n_samples // 2, n_samples - 1000 - 10):
 
             i1 = index
             i2 = i1 + 1000
 
             v1 = i2
             v2 = i2 + 5
-            v3 = i2 + 10 # ONLY FOR L/S LABEL
+            v3 = i2 + 10  # ONLY FOR L/S LABEL
 
             features = extract_features(ochlv, i1, i2, v1, v2)
             labels = extract_label(ochlv, i1, i2, v1, v2, v3)
@@ -248,7 +256,8 @@ def process_assets():
 
             yield features + labels
 
-def record_dataset(filepath = "neural_set_bwv.csv"):
+
+def record_dataset(filepath="neural_set_bwv.csv"):
     max_dset = 100000
     last_direction = 0
     with open(filepath, "w+") as dataset_file:
@@ -265,7 +274,6 @@ def record_dataset(filepath = "neural_set_bwv.csv"):
             writer.writerow(line)
             if not max_dset:
                 break
-
 
 
 record_dataset()

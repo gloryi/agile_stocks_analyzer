@@ -1,5 +1,4 @@
-from autobahn.twisted.websocket import WebSocketClientProtocol, \
-    WebSocketClientFactory
+from autobahn.twisted.websocket import WebSocketClientProtocol, WebSocketClientFactory
 import json
 import random
 import time
@@ -17,7 +16,7 @@ import json
 TOKEN_NAME = "UNKNOWN"
 KILL_RECEIVED = False
 INTERVAL_M = 15
-#INTERVAL_M = 1
+# INTERVAL_M = 1
 INTERVAL = f"{INTERVAL_M}m"
 
 if INTERVAL_M == 15:
@@ -27,71 +26,78 @@ elif INTERVAL_M == 10:
 else:
     TIMEFRAME = "1d"
 
+
 def generateOCHLPicture(O, C, H, L):
-
-    def drawSquareInZone(image,zone ,x1,y1,x2,y2, col):
+    def drawSquareInZone(image, zone, x1, y1, x2, y2, col):
         X = zone[0]
         Y = zone[1]
         dx = zone[2] - X
         dy = zone[3] - Y
-        X1 = int(X + dx*x1)
-        Y1 = int(Y + dy*y1)
-        X2 = int(X + dx*x2)
-        Y2 = int(Y + dy*y2)
-        cv.rectangle(image,(Y1,X1),(Y2,X2),col,-1)
+        X1 = int(X + dx * x1)
+        Y1 = int(Y + dy * y1)
+        X2 = int(X + dx * x2)
+        Y2 = int(Y + dy * y2)
+        cv.rectangle(image, (Y1, X1), (Y2, X2), col, -1)
 
-    def drawLineInZone(image,zone ,x1,y1,x2,y2, col):
+    def drawLineInZone(image, zone, x1, y1, x2, y2, col):
         X = zone[0]
         Y = zone[1]
         dx = zone[2] - X
         dy = zone[3] - Y
-        X1 = int(X + dx*x1)
-        Y1 = int(Y + dy*y1)
-        X2 = int(X + dx*x2)
-        Y2 = int(Y + dy*y2)
-        cv.line(image,(Y1,X1),(Y2,X2),col,1)
+        X1 = int(X + dx * x1)
+        Y1 = int(Y + dy * y1)
+        X2 = int(X + dx * x2)
+        Y2 = int(Y + dy * y2)
+        cv.line(image, (Y1, X1), (Y2, X2), col, 1)
 
-    def calculateHA( O, C, H, L, Op, Cp, Hp, Lp):
-        hC = (O+C+H+L)/4
-        hO = (Op+Cp)/2
-        hH = max(O,H,C)
-        hL = min (O,H,C)
+    def calculateHA(O, C, H, L, Op, Cp, Hp, Lp):
+        hC = (O + C + H + L) / 4
+        hO = (Op + Cp) / 2
+        hH = max(O, H, C)
+        hL = min(O, H, C)
         return hO, hC, hH, hL
 
-    def haOfIndex( O, C, H, L, slidingIndex):
-        o1, c1, h1, l1 = calculateHA(O[slidingIndex],
-                                        C[slidingIndex],
-                                        H[slidingIndex],
-                                        L[slidingIndex],
-                                        O[slidingIndex-1],
-                                        C[slidingIndex-1],
-                                        H[slidingIndex-1],
-                                        L[slidingIndex-1])
+    def haOfIndex(O, C, H, L, slidingIndex):
+        o1, c1, h1, l1 = calculateHA(
+            O[slidingIndex],
+            C[slidingIndex],
+            H[slidingIndex],
+            L[slidingIndex],
+            O[slidingIndex - 1],
+            C[slidingIndex - 1],
+            H[slidingIndex - 1],
+            L[slidingIndex - 1],
+        )
         return o1, c1, h1, l1
 
-    def redHA( o, c, h, l):
+    def redHA(o, c, h, l):
         return True if c < o else False
 
-    def greenHA( o, c, h, l):
+    def greenHA(o, c, h, l):
         return True if c > o else False
 
-    green = lambda idx : greenHA(haOfIndex(O,C,H,L,idx))
-    red   = lambda idx : redHA(haOfIndex(O,C,H,L,idx))
+    green = lambda idx: greenHA(haOfIndex(O, C, H, L, idx))
+    red = lambda idx: redHA(haOfIndex(O, C, H, L, idx))
 
     ochl = []
     hochl = []
     values = []
     hvalues = []
 
-    depth = len(O)-1
+    depth = len(O) - 1
 
     for index in range(depth):
-        o,c,h,l = O[-depth+index], C[-depth+index], H[-depth+index], L[-depth+index]
-        ho,hc,hh,hl = haOfIndex(O,C,H,L,-depth+index )
-        ochl.append([o,c,h,l])
-        hochl.append([ho,hc,hh,hl])
-        values+=[o,c,h,l]
-        hvalues+=ho,hc,hh,hl
+        o, c, h, l = (
+            O[-depth + index],
+            C[-depth + index],
+            H[-depth + index],
+            L[-depth + index],
+        )
+        ho, hc, hh, hl = haOfIndex(O, C, H, L, -depth + index)
+        ochl.append([o, c, h, l])
+        hochl.append([ho, hc, hh, hl])
+        values += [o, c, h, l]
+        hvalues += ho, hc, hh, hl
 
     minVal = min(values)
     maxVal = max(values)
@@ -104,46 +110,79 @@ def generateOCHLPicture(O, C, H, L):
     H = 300
     W = 500
 
-    img = np.zeros((H,W,3), np.uint8)
+    img = np.zeros((H, W, 3), np.uint8)
 
-    firstSquare  = [0,  0,H/2, W]
-    secondSquare = [H/2,0,H,   W]
-# h1,w1,h2,w2
-    drawSquareInZone(img, firstSquare, 0,0,1,1,(20,20,20))
-    drawSquareInZone(img, secondSquare, 0,0,1,1,(50,50,50))
+    firstSquare = [0, 0, H / 2, W]
+    secondSquare = [H / 2, 0, H, W]
+    # h1,w1,h2,w2
+    drawSquareInZone(img, firstSquare, 0, 0, 1, 1, (20, 20, 20))
+    drawSquareInZone(img, secondSquare, 0, 0, 1, 1, (50, 50, 50))
 
-    candlePos = lambda val: (val-minVal)/(maxVal-minVal)
-    hcandlePos = lambda val: (val-hminVal)/(hmaxVal-hminVal)
+    candlePos = lambda val: (val - minVal) / (maxVal - minVal)
+    hcandlePos = lambda val: (val - hminVal) / (hmaxVal - hminVal)
 
-    for i,candle in enumerate(ochl):
-        _o,_c,_h,_l = candle
+    for i, candle in enumerate(ochl):
+        _o, _c, _h, _l = candle
         if _c > _o:
-            col = (0,255,0)
+            col = (0, 255, 0)
         else:
-            col = (0,0,255)
+            col = (0, 0, 255)
         lwick = hcandlePos(_l)
         hwick = hcandlePos(_h)
         oline = hcandlePos(_o)
         cline = hcandlePos(_c)
-        drawLineInZone(img, firstSquare, 1-lwick,(i+0.5)/depth,1-hwick,(i+0.5)/depth,col)
-        drawSquareInZone(img, firstSquare, 1-cline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col)
+        drawLineInZone(
+            img,
+            firstSquare,
+            1 - lwick,
+            (i + 0.5) / depth,
+            1 - hwick,
+            (i + 0.5) / depth,
+            col,
+        )
+        drawSquareInZone(
+            img,
+            firstSquare,
+            1 - cline,
+            (i + 0.5 - 0.3) / depth,
+            1 - oline,
+            (i + 0.5 + 0.3) / depth,
+            col,
+        )
 
-    for i,candle in enumerate(hochl):
-        _o,_c,_h,_l = candle
+    for i, candle in enumerate(hochl):
+        _o, _c, _h, _l = candle
         if _c > _o:
-            col = (0,255,0)
+            col = (0, 255, 0)
         else:
-            col = (0,0,255)
+            col = (0, 0, 255)
         lwick = hcandlePos(_l)
         hwick = hcandlePos(_h)
         oline = hcandlePos(_o)
         cline = hcandlePos(_c)
-        drawLineInZone(img, secondSquare, 1-lwick,(i+0.5)/depth,1-hwick,(i+0.5)/depth,col)
-        drawSquareInZone(img, secondSquare, 1-cline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col)
+        drawLineInZone(
+            img,
+            secondSquare,
+            1 - lwick,
+            (i + 0.5) / depth,
+            1 - hwick,
+            (i + 0.5) / depth,
+            col,
+        )
+        drawSquareInZone(
+            img,
+            secondSquare,
+            1 - cline,
+            (i + 0.5 - 0.3) / depth,
+            1 - oline,
+            (i + 0.5 + 0.3) / depth,
+            col,
+        )
 
     return img
 
-class Payload():
+
+class Payload:
     def __init__(self):
         self.random_words_list = ["Fuck!"]
         pass
@@ -153,23 +192,24 @@ class Payload():
         message = random.choice(self.random_words_list)
         return message
 
-class MarketStateMachine():
-    def __init__(self):
-        self.unknown    = "UNKNOWN"
-        self.suspicious = "SUSPICIOUS"
-        self.usual     = "USUAL"
-        self.rising     = "RISING"
-        self.falling     = "FALLING"
 
-        self.uptrend    = "UPTREND"
-        self.downtrend  = "DOWNTREND"
-        self.dirty      = "DIRTY"
+class MarketStateMachine:
+    def __init__(self):
+        self.unknown = "UNKNOWN"
+        self.suspicious = "SUSPICIOUS"
+        self.usual = "USUAL"
+        self.rising = "RISING"
+        self.falling = "FALLING"
+
+        self.uptrend = "UPTREND"
+        self.downtrend = "DOWNTREND"
+        self.dirty = "DIRTY"
 
         self.current_state = self.unknown
 
     def are_new_state_signal(self, new_state):
 
-        if  self.current_state == self.unknown:
+        if self.current_state == self.unknown:
             print("SET INITIAL STATE OF ", new_state)
             self.current_state = new_state
             return self.usual
@@ -178,7 +218,9 @@ class MarketStateMachine():
             print("STATE DOES NOT CHANGED: ", new_state)
             return self.usual
 
-        elif (self.current_state == "DOWNTREND" and new_state == "DIRTY") or (self.current_state == "UPTREND" and new_state == "DIRTY"):
+        elif (self.current_state == "DOWNTREND" and new_state == "DIRTY") or (
+            self.current_state == "UPTREND" and new_state == "DIRTY"
+        ):
             print("HA NOT CLEAN", new_state)
             self.current_state = new_state
             return self.usual
@@ -199,7 +241,7 @@ class MarketProcessingPayload(Payload):
         self.state = MarketStateMachine()
         self.random_words_list = ["FUCK"]
 
-    def extractOCHL(filename = "test_data.csv"):
+    def extractOCHL(filename="test_data.csv"):
         O, C, H, L = [], [], [], []
         with open(filename, "r") as ochlfile:
             reader = csv.reader(ochlfile)
@@ -217,52 +259,53 @@ class MarketProcessingPayload(Payload):
         data = {}
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((HOST, PORT))
-            s.sendall(json.dumps({"asset":TOKEN_NAME}).encode("UTF-8"))
+            s.sendall(json.dumps({"asset": TOKEN_NAME}).encode("UTF-8"))
             data = json.loads(s.recv(20000).decode("UTF-8"))
 
         return data["O"], data["C"], data["H"], data["L"]
 
-
     def trendByMA(self, closePrices):
 
         currentClose = closePrices[-1]
-        #MA30 = sum(closePrices[-30:])/30
-        MA200 = sum(closePrices[-200:])/200
+        # MA30 = sum(closePrices[-30:])/30
+        MA200 = sum(closePrices[-200:]) / 200
 
         print("MA200, PRICE ARE")
-        print(MA200, currentClose, sep=' | ')
-        if   currentClose >  MA200:
+        print(MA200, currentClose, sep=" | ")
+        if currentClose > MA200:
             print("MA SHOWING UPTREND")
             return "MA_UPTREND"
-        elif not currentClose  > MA200:
+        elif not currentClose > MA200:
             print("MA SHOWING DOWNTREND")
             return "MA_DOWNTREND"
-        #elif currentClose > MA30 and not MA30 > MA200:
-            #print("MA SHOWING RETRACEMENT UP")
-            #return "MA_RETRACEMENT_UP"
-        #elif not currentClose > MA30 and MA30 > MA200:
-            #print("MA SHOWING RETRACEMENT DOWN")
-            #return "MA_RETRACEMENT_DOWN"
+        # elif currentClose > MA30 and not MA30 > MA200:
+        # print("MA SHOWING RETRACEMENT UP")
+        # return "MA_RETRACEMENT_UP"
+        # elif not currentClose > MA30 and MA30 > MA200:
+        # print("MA SHOWING RETRACEMENT DOWN")
+        # return "MA_RETRACEMENT_DOWN"
         else:
             print("MA POSITION IS UNDEFINED")
             return "CONSOLIDATION"
 
     def calculateHA(self, O, C, H, L, Op, Cp, Hp, Lp):
-        hC = (O+C+H+L)/4
-        hO = (Op+Cp)/2
-        hH = max(O,H,C)
-        hL = min (O,H,C)
+        hC = (O + C + H + L) / 4
+        hO = (Op + Cp) / 2
+        hH = max(O, H, C)
+        hL = min(O, H, C)
         return hO, hC, hH, hL
 
     def haOfIndex(self, O, C, H, L, slidingIndex):
-        o1, c1, h1, l1 = self.calculateHA(O[slidingIndex],
-                                        C[slidingIndex],
-                                        H[slidingIndex],
-                                        L[slidingIndex],
-                                        O[slidingIndex-1],
-                                        C[slidingIndex-1],
-                                        H[slidingIndex-1],
-                                        L[slidingIndex-1])
+        o1, c1, h1, l1 = self.calculateHA(
+            O[slidingIndex],
+            C[slidingIndex],
+            H[slidingIndex],
+            L[slidingIndex],
+            O[slidingIndex - 1],
+            C[slidingIndex - 1],
+            H[slidingIndex - 1],
+            L[slidingIndex - 1],
+        )
         return o1, c1, h1, l1
 
     def redHA(self, o, c, h, l):
@@ -294,7 +337,7 @@ class MarketProcessingPayload(Payload):
             idx += 1
         p2 = idx
         while idx < len(sequence) and sequence[idx] != targetColor:
-            idx+=1
+            idx += 1
         p3 = idx
 
         D1 = p2 - p1
@@ -306,18 +349,16 @@ class MarketProcessingPayload(Payload):
             return True
         return False
 
-
     def trendByHA(self, O, C, H, L):
-        green = lambda idx : self.greenHA(*self.haOfIndex(O,C,H,L,idx))
-        red   = lambda idx : self.redHA(*self.haOfIndex(O,C,H,L,idx))
+        green = lambda idx: self.greenHA(*self.haOfIndex(O, C, H, L, idx))
+        red = lambda idx: self.redHA(*self.haOfIndex(O, C, H, L, idx))
 
         new_state = "UNKNOWN"
 
         # Make it more agile
-        greenMask = list([green(_) for _ in range(-1,-10,-1)])
+        greenMask = list([green(_) for _ in range(-1, -10, -1)])
 
         print("HA LAYOUT IS", greenMask)
-
 
         if self.analyzeHASequence(greenMask, True, 2, 4):
             print("HENKEN ASHI SHOWING UPTREND")
@@ -337,26 +378,28 @@ class MarketProcessingPayload(Payload):
 
     def generate_image(self, O, C, H, L):
         image = generateOCHLPicture(O[-50:], C[-50:], H[-50:], L[-50:])
-        cv.imwrite(f"{self.token}.png",image)
+        cv.imwrite(f"{self.token}.png", image)
         return f"{self.token}.png"
 
     def wait_for_event(self):
         message = ""
         time_for_next_update = 0
         while True:
-            #time.sleep(time_for_next_update*60)
+            # time.sleep(time_for_next_update*60)
             O, C, H, L = self.fetch_market_data()
-            market_situation = self.trendByHA(O,C,H,L)
+            market_situation = self.trendByHA(O, C, H, L)
 
             time_for_next_update = self.tweakFrequency(market_situation)
 
-            if(market_situation == "USUAL"):
+            if market_situation == "USUAL":
                 continue
 
             image_path = self.generate_image(O, C, H, L)
 
             message = {}
-            message["text"] = self.token + " || " + market_situation + " at " + str(O[-1])
+            message["text"] = (
+                self.token + " || " + market_situation + " at " + str(O[-1])
+            )
             message["image"] = image_path
             break
 
@@ -373,11 +416,11 @@ class MarketProcessingPayload(Payload):
 
         return time_for_next_update
 
-class MyClientProtocol(WebSocketClientProtocol):
 
+class MyClientProtocol(WebSocketClientProtocol):
     def __init__(self, *args, **kwards):
         super(MyClientProtocol, self).__init__(*args, **kwards)
-        self.payload = MarketProcessingPayload(TOKEN_NAME )
+        self.payload = MarketProcessingPayload(TOKEN_NAME)
 
     def onConnect(self, response):
         print("Connected to bot server: {0}".format(response.peer))
@@ -396,13 +439,13 @@ class MyClientProtocol(WebSocketClientProtocol):
             if KILL_RECEIVED:
                 return
             message_to_server = self.payload.wait_for_event()
-            self.sendMessage(message_to_server.encode('utf8'))
+            self.sendMessage(message_to_server.encode("utf8"))
             self.factory.reactor.callLater(2, send_task)
 
         send_task()
 
     def onMessage(self, payload, isBinary):
-        grabber_msg = payload.decode('utf8')
+        grabber_msg = payload.decode("utf8")
         print("RECEIVED ", grabber_msg)
         if grabber_msg == "KILL":
             global KILL_RECEIVED
@@ -414,7 +457,7 @@ class MyClientProtocol(WebSocketClientProtocol):
         print("Connection wint bot dispatcher closed: {0}".format(reason))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     import sys
 

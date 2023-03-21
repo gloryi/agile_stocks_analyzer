@@ -8,25 +8,39 @@ import sys
 TRN1 = 500
 TRN2 = 1000
 SILENT = True
-EVALUATOR = "neonEvaluator.py"
-
+EVALUATOR = "evaluatorProcessor.py"
 
 
 def launch_test(TEST_MODE, TRN_MODE, PORT):
 
     print(f"Launching {TEST_MODE} test with depth of {TRN_MODE}")
 
-
     time.sleep(2)
-    validator = subprocess.Popen(["python3", os.path.join(project_path,"validator.py"),
-                        TEST_MODE, str(TRN_MODE), str(PORT)])
+    validator = subprocess.Popen(
+        [
+            "python3",
+            os.path.join(project_path, "validator.py"),
+            TEST_MODE,
+            str(TRN_MODE),
+            str(PORT),
+        ]
+    )
     time.sleep(2)
-    evaluator = subprocess.Popen(["python3", os.path.join(project_path, EVALUATOR),
-                        TOKEN_NAME, "V", TEST_MODE,  str(PORT)], stdout=subprocess.DEVNULL)
-                        #TOKEN_NAME, "V", TEST_MODE,  str(PORT)])
+    evaluator = subprocess.Popen(
+        [
+            "python3",
+            os.path.join(project_path, EVALUATOR),
+            # TOKEN_NAME, "V", TEST_MODE,  str(PORT)], stdout=subprocess.DEVNULL)
+            TOKEN_NAME,
+            "V",
+            TEST_MODE,
+            str(PORT),
+        ]
+    )
     time.sleep(2)
 
     return validator, evaluator
+
 
 def suspend_current(validators, evaluators):
     for validator in validators:
@@ -37,9 +51,6 @@ def suspend_current(validators, evaluators):
 
     validators.clear()
     evaluators.clear()
-
-
-
 
 
 try:
@@ -53,29 +64,32 @@ try:
 
     if TEST_MODE == "MINI":
         TRN1 = 100
-        TRN2 = 200
+        TRN2 = 100
 
     if TEST_MODE == "FULL":
-        TRN1 = 500
+        TRN1 = 1000
         TRN2 = 1000
 
     if TEST_MODE == "EXTRA":
-        TRN1 = 2000
-        TRN2 = 5000
+        TRN1 = 3000
+        TRN2 = 3000
 
     if TEST_MODE == "LEGACY":
-        TRN1 = 500
+        TRN1 = 1000
         TRN2 = 1000
         EVALUATOR = "_legacyEvaluatorProcessor.py"
 
 except Exception as e:
-    print("CLI ARGUMENTS EXPECTED: <MAJOR_BUILD>[_MINOR_BUILD]* <MINI|FULL|EXTRA|LEGACY>")
+    print(
+        "CLI ARGUMENTS EXPECTED: <MAJOR_BUILD>[_MINOR_BUILD]* <MINI|FULL|EXTRA|LEGACY> <TEST_SET={0|1|2|3}>"
+    )
 
 project_path = os.getcwd()
 
-evaluation_server_plug = subprocess.Popen(["python3",
-                                           os.path.join(project_path,"_validator_server_plug.py"), "6666"],
-                                          stdout = subprocess.DEVNULL)
+evaluation_server_plug = subprocess.Popen(
+    ["python3", os.path.join(project_path, "_validator_server_plug.py"), "6666"],
+    stdout=subprocess.DEVNULL,
+)
 
 
 validators = []
@@ -93,12 +107,21 @@ if TEST_SET == 0:
     validators.append(validator)
     evaluators.append(evaluator)
 
-    validator, evaluator = launch_test("BLAKE", TRN2, 7781)
-    validators.append(validator)
-    evaluators.append(evaluator)
+    # validator, evaluator = launch_test("BLAKE", TRN2, 7781)
+    # validators.append(validator)
+    # evaluators.append(evaluator)
 
-
-
+    # validator, evaluator = launch_test("R", TRN2, 7782)
+    # validators.append(validator)
+    # evaluators.append(evaluator)
+    #
+    # validator, evaluator = launch_test("R", TRN2, 7783)
+    # validators.append(validator)
+    # evaluators.append(evaluator)
+    #
+    # validator, evaluator = launch_test("R", TRN2, 7784)
+    # validators.append(validator)
+    # evaluators.append(evaluator)
 
     suspend_current(validators, evaluators)
 
@@ -120,6 +143,17 @@ if TEST_SET == 1:
     validators.append(validator)
     evaluators.append(evaluator)
 
+    # validator, evaluator = launch_test("R", TRN1, 7782)
+    # validators.append(validator)
+    # evaluators.append(evaluator)
+    #
+    # validator, evaluator = launch_test("R", TRN1, 7785)
+    # validators.append(validator)
+    # evaluators.append(evaluator)
+    #
+    # validator, evaluator = launch_test("R", TRN1, 7784)
+    # validators.append(validator)
+    # evaluators.append(evaluator)
 
     suspend_current(validators, evaluators)
 

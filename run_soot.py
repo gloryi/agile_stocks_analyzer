@@ -11,7 +11,8 @@ EVALUATOR = "roseEvaluator.py"
 LOCAL_FOLDER = os.path.join(os.getcwd(), "various_datasets")
 N_NODES = 1
 
-def list_assets(folder = LOCAL_FOLDER):
+
+def list_assets(folder=LOCAL_FOLDER):
     assets = []
 
     for _r, _d, _f in os.walk(folder):
@@ -19,19 +20,24 @@ def list_assets(folder = LOCAL_FOLDER):
 
     return assets
 
+
 def select_assets(n_nodes):
     known_assets = [pathlib.Path(_).stem for _ in list_assets()]
     print(known_assets)
     return random.sample(known_assets, n_nodes)
+
 
 def launch_test(ASSET):
 
     print(f"Launching {ASSET} evaluator")
 
     time.sleep(0.5)
-    evaluator = subprocess.Popen(["python3", os.path.join(project_path, EVALUATOR), ASSET])
+    evaluator = subprocess.Popen(
+        ["python3", os.path.join(project_path, EVALUATOR), ASSET]
+    )
 
     return evaluator
+
 
 def suspend_current(evaluators):
 
@@ -53,13 +59,13 @@ except Exception as e:
 
 project_path = os.getcwd()
 
-evaluation_server_plug = subprocess.Popen(["python3",
-                                           os.path.join(project_path,
-                                                        "soot_plug.py"), "6666"])
+evaluation_server_plug = subprocess.Popen(
+    ["python3", os.path.join(project_path, "soot_plug.py"), "6666"]
+)
 
-local_fetcher = subprocess.Popen(["python3",
-                                  os.path.join(project_path,
-                                                          "_localFetcher.py"), "7777"])
+local_fetcher = subprocess.Popen(
+    ["python3", os.path.join(project_path, "_localFetcher.py"), "7777"]
+)
 
 
 evaluators = []

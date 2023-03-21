@@ -5,3 +5,4 @@ api_keys.py
 telegram_api_config.py
 *mypy*
 *.dat
+pylint_report
